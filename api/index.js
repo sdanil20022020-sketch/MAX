@@ -160,7 +160,47 @@ function handle(db,method,p,q,b,headers){
     t.members.forEach(m=>notify(m,`${u.nick} бросил(а) вызов казику «${t.name}»: ${result==='win'?'вы проиграли':result==='lose'?'вы победили':'ничья'}`));
     return{result,a:{name:a.name,metric:a.metric},b:{name:t.name,metric:t.metric},coins:u.coins};
   }
-
+  if(p.startsWith('/api/tank/')){
+    const PR={baby:0,scout:150,fighter:400,heavy:900,sniper:1500,rapid:2500};
+    db.rooms=db.rooms||{};
+    u.tanks=u.tanks||['baby'];u.tank=u.tank||'baby';
+    const now=Date.now();
+    for(const k in db.rooms)if(now-db.rooms[k].t>45000)delete db.rooms[k];
+    if(p==='/api/tank/garage')return{coins:u.coins,tanks:u.tanks,sel:u.tank};
+    if(p==='/api/tank/buy'){
+      const id=String(b.id);
+      if(!(id in PR))throw err(400,'Нет такого танка');
+      if(u.tanks.includes(id))throw err(400,'Уже куплен');
+      if(u.coins<PR[id])throw err(400,'Не хватает монет');
+      u.coins-=PR[id];u.tanks.push(id);
+      return{coins:u.coins,tanks:u.tanks,sel:u.tank};
+    }
+    if(p==='/api/tank/select'){
+      const id=String(b.id);
+      if(!u.tanks.includes(id))throw err(400,'Танк не куплен');
+      u.tank=id;return{ok:1};
+    }
+    if(p==='/api/tank/rooms')return{rooms:Object.values(db.rooms).filter(r=>r.host!==u.nick).map(r=>({host:r.host,peer:r.peer,players:r.players}))};
+    if(p==='/api/tank/room'){
+      const peer=String(b.peer||'');
+      if(!/^[\w-]{5,80}$/.test(peer))throw err(400,'Плохой id');
+      db.rooms[u.nick]={host:u.nick,peer,players:Math.min(4,Math.max(1,Math.floor(+b.players)||1)),t:now};
+      return{ok:1};
+    }
+    if(p==='/api/tank/leave'){delete db.rooms[u.nick];return{ok:1}}
+    if(p==='/api/tank/check'){
+      const x=db.users[String(b.nick||'').toLowerCase()];
+      return{ok:!!(x&&(x.tanks||['baby']).includes(String(b.tank)))};
+    }
+    if(p==='/api/tank/reward'){
+      if(now-(u.lastTankReward||0)<20000)return{got:0,coins:u.coins};
+      u.lastTankReward=now;
+      const k=Math.max(0,Math.min(15,Math.floor(+b.kills)||0));
+      const got=Math.min(40,k*3+(b.win?20:0));
+      u.coins+=got;
+      return{got,coins:u.coins};
+    }
+  }
   throw err(404,'Не найдено');
 }
 
