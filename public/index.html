@@ -1,194 +1,308 @@
-const crypto=require('crypto');
-const {Pool}=require('pg');
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAX</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,Roboto,Arial,sans-serif}
+:root{--bg:#0f1115;--panel:#181b22;--panel2:#1f232c;--line:#2a2f3a;--txt:#eef0f5;--mut:#8b93a5;--acc:#5b6cff;--acc2:#9b5bff;--ok:#2ecc71;--bad:#ff5a6a}
+body{background:var(--bg);color:var(--txt);height:100vh;overflow:hidden}
+button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;background:var(--panel2);color:var(--txt);font-size:14px;transition:.15s}
+button:hover{filter:brightness(1.2)}
+button.p{background:linear-gradient(135deg,var(--acc),var(--acc2));font-weight:600}
+button.d{background:var(--bad)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-size:14px;outline:0}
+input:focus{border-color:var(--acc)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:1px}
+.ico{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center}
+.ico svg{width:22px;height:22px}
+#auth{height:100vh;display:grid;place-items:center}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;width:340px;display:flex;flex-direction:column;gap:12px}
+.card .logo{justify-content:center;margin-bottom:6px}
+.err{color:var(--bad);font-size:13px;min-height:16px}
+#app{display:none;height:100vh;grid-template-columns:320px 1fr}
+#side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px;gap:12px;overflow:auto}
+.top{display:flex;justify-content:space-between;align-items:center}
+.coins{background:var(--panel2);padding:6px 12px;border-radius:20px;font-weight:600;font-size:14px}
+.list{display:flex;flex-direction:column;gap:6px}
+.item{padding:12px;border-radius:12px;background:var(--panel2);cursor:pointer;display:flex;align-items:center;gap:10px}
+.item:hover{background:#272c38}
+.item.act{outline:2px solid var(--acc)}
+.item .ava{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;font-size:18px;flex:none}
+.sub{color:var(--mut);font-size:12px}
+.h{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
+#main{display:flex;min-width:0}
+#content{flex:1;padding:22px;overflow:auto;min-width:0}
+#panel{width:340px;background:var(--panel);border-left:1px solid var(--line);padding:20px;display:none;flex-direction:column;gap:12px}
+.empty{height:100%;display:grid;place-items:center;color:var(--mut);text-align:center}
+.cas{display:grid;grid-template-columns:200px 1fr;gap:18px}
+.menu{display:flex;flex-direction:column;gap:8px}
+.menu button{text-align:left}
+.menu button.on{background:linear-gradient(135deg,var(--acc),var(--acc2))}
+.photo{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;text-align:center;margin-bottom:16px}
+.photo .big{font-size:84px;line-height:1.1}
+.stat{display:inline-block;margin:6px 6px 0;padding:6px 12px;background:var(--panel2);border-radius:14px;font-size:13px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border:0}
+#ham{font-size:110px;user-select:none;cursor:pointer;transition:transform .05s;display:inline-block}
+#ham:active{transform:scale(.88)}
+.slots{display:grid;gap:8px;background:#0b0d12;padding:14px;border-radius:14px;margin:12px 0}
+.srow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.cell{background:var(--panel2);border-radius:10px;text-align:center;font-size:34px;padding:8px 0}
+.cell.w{background:#2b5d3a;box-shadow:0 0 0 2px var(--ok)}
+.msg{min-height:22px;font-weight:600;margin-bottom:6px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+h2{margin-bottom:12px}
+#toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:20}
+.toast{background:var(--panel2);border:1px solid var(--acc);padding:10px 14px;border-radius:12px;max-width:320px;font-size:14px}
+@media(max-width:900px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr}#side{max-height:40vh}.cas{grid-template-columns:1fr}#panel{position:fixed;right:0;top:0;bottom:0;z-index:5}}
+</style>
+</head>
+<body>
 
-let pool=null,ready=false;
-function getPool(){
-  if(!pool){
-    if(!process.env.DATABASE_URL)throw new Error('Нет DATABASE_URL');
-    pool=new Pool({connectionString:process.env.DATABASE_URL,max:1,ssl:{rejectUnauthorized:false}});
-  }
-  return pool;
+<div id="auth">
+  <div class="card">
+    <div class="logo"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6l8 8 8-8v13"/></svg></div>MAX</div>
+    <input id="nick" placeholder="Ник" maxlength="20">
+    <input id="pass" type="password" placeholder="Пароль" onkeydown="if(event.key==='Enter')login()">
+    <div class="err" id="aerr"></div>
+    <button class="p" onclick="login()">Создать аккаунт / Войти</button>
+    <div class="sub" style="text-align:center">Если ника ещё нет, он будет создан</div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="side">
+    <div class="top">
+      <div class="logo"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6l8 8 8-8v13"/></svg></div>MAX</div>
+      <div class="coins" id="coins">🪙 0</div>
+    </div>
+    <input id="q" placeholder="🔍 Найти команды, людей или казики" oninput="searchDeb()">
+    <div class="list" id="results"></div>
+    <div class="h">Меню</div>
+    <div class="list" id="menu"></div>
+    <div style="margin-top:auto"><div class="sub" id="who"></div><button style="margin-top:8px;width:100%" onclick="logout()">Выйти</button></div>
+  </div>
+  <div id="main"><div id="content"></div><div id="panel"></div></div>
+</div>
+<div id="toasts"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Math.round(n).toLocaleString('ru-RU');
+const UPS=[
+ {k:'a',n:'Охрана и камеры',cost:30,red:100},
+ {k:'b',n:'Налог на выигрыш',cost:60,red:150},
+ {k:'c',n:'Жадный дилер',cost:120,red:300},
+ {k:'d',n:'VIP-казначей',cost:250,red:600},
+ {k:'e',n:'Скрытая комиссия',cost:500,red:1500}];
+const FR=[['🍋',2],['🍒',3],['🍇',4],['🍉',5],['🍊',6],['⭐',10]];
+const STAGES=['🏚️','🏠','🏪','🏢','🏦','🏰','🏙️','🌆'];
+
+let token=localStorage.getItem('max_token'),me=null,myc=null,cur=null,tab='upgrade',tapBuf=0,spinning=false,grid=null,sdeb=null;
+
+async function api(p,body){
+  const r=await fetch('/api/'+p,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-token':token||''},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401&&token){logout();return}
+  if(!r.ok)throw new Error(j.error||'Ошибка');
+  return j;
 }
-function seed(){
-  const db={users:{},casinos:{},tokens:{}};
-  [['Золотой Дракон',9200],['Лаки Seven',7400],['Мини-Вегас',5100]].forEach(([name,metric],i)=>{
-    db.casinos['b'+i]={id:'b'+i,name,owner:'бот',members:[],bot:true,team:false,metric,lv:{}};
-  });
-  return db;
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),6000)}
+function upCoins(){$('#coins').textContent='🪙 '+fmt(me.coins)}
+
+/* ---- auth ---- */
+async function login(){
+  try{const j=await api('login',{nick:$('#nick').value,pass:$('#pass').value});token=j.token;localStorage.setItem('max_token',token);boot()}
+  catch(e){$('#aerr').textContent=e.message}
 }
-async function init(){
-  if(ready)return;
-  const p=getPool();
-  await p.query('create table if not exists store(id int primary key, data jsonb not null)');
-  await p.query('insert into store(id,data) values(1,$1) on conflict(id) do nothing',[JSON.stringify(seed())]);
-  ready=true;
+function logout(){localStorage.removeItem('max_token');location.reload()}
+async function boot(){
+  try{await refresh()}catch{return}
+  $('#auth').style.display='none';$('#app').style.display='grid';
+  await render();
+  setInterval(poll,5000);
+  setInterval(flushTap,700);
 }
-
-const UPS={a:{cost:30,red:100},b:{cost:60,red:150},c:{cost:120,red:300},d:{cost:250,red:600},e:{cost:500,red:1500}};
-const FR=[{s:'🍋',v:2},{s:'🍒',v:3},{s:'🍇',v:4},{s:'🍉',v:5},{s:'🍊',v:6},{s:'⭐',v:10}];
-const CODE=/^print\(\s*["']?hello world["']?\s*\)$/i;
-
-const err=(code,msg)=>{const e=new Error(msg);e.code=code;return e};
-const hash=(p,s)=>crypto.scryptSync(p,s,32).toString('hex');
-const level=c=>Object.values(c.lv||{}).reduce((a,b)=>a+b,0);
-const factor=c=>Math.max(.05,Math.min(.8,.4+c.metric/25000));
-const pub=c=>({id:c.id,name:c.name,owner:c.owner,team:c.team,bot:!!c.bot,metric:c.metric,level:level(c),members:c.members,lv:c.lv,rtp:Math.round(1.17*factor(c)*100)});
-const userPub=u=>({nick:u.nick,coins:u.coins,tap:u.tap,tapLv:u.tapLv,auto:u.auto,autoLv:u.autoLv});
-
-function handle(db,method,p,q,b,headers){
-  const casinoOf=u=>Object.values(db.casinos).find(c=>!c.bot&&c.members.includes(u.nick));
-  const notify=(nick,t)=>{const x=db.users[nick.toLowerCase()];if(x){x.notes.push(t);if(x.notes.length>20)x.notes.shift()}};
-  const settle=u=>{
-    const now=Date.now(),s=Math.floor((now-u.last)/1000);
-    if(s>0){if(u.auto)u.coins+=Math.min(s,86400)*u.auto;u.last+=s*1000;if(s>86400)u.last=now}
-  };
-
-  if(p==='/api/login'&&method==='POST'){
-    const nick=String(b.nick||'').trim(),pass=String(b.pass||'');
-    if(!/^[\wа-яёА-ЯЁ .-]{2,20}$/.test(nick))throw err(400,'Ник: 2–20 символов (буквы, цифры, пробел, . -)');
-    if(pass.length<4)throw err(400,'Пароль минимум 4 символа');
-    const k=nick.toLowerCase();let u=db.users[k];
-    if(!u){
-      const salt=crypto.randomBytes(8).toString('hex');
-      u=db.users[k]={nick,salt,hash:hash(pass,salt),coins:100,tap:10,tapLv:0,auto:0,autoLv:0,last:Date.now(),lastTap:0,lastBattle:0,notes:[]};
-    }else if(u.hash!==hash(pass,u.salt))throw err(403,'Неверный пароль');
-    const keys=Object.keys(db.tokens);
-    if(keys.length>3000)keys.slice(0,1000).forEach(x=>delete db.tokens[x]);
-    const t=crypto.randomBytes(24).toString('hex');db.tokens[t]=k;return{token:t};
-  }
-
-  const u=db.users[db.tokens[headers['x-token']]];
-  if(!u)throw err(401,'Войди в аккаунт');
-  settle(u);
-
-  if(p==='/api/me'){
-    const c=casinoOf(u),notes=u.notes.splice(0);
-    return{user:userPub(u),casino:c?pub(c):null,notes};
-  }
-
-  if(p==='/api/search'){
-    const s=String(q.get('q')||'').trim().toLowerCase();
-    const casinos=Object.values(db.casinos).filter(c=>!s||c.name.toLowerCase().includes(s)).slice(0,30).map(pub);
-    const users=s?Object.values(db.users).filter(x=>x.nick.toLowerCase().includes(s)).slice(0,20).map(x=>{
-      const c=casinoOf(x);return{nick:x.nick,casinoId:c?c.id:null,casinoName:c?c.name:null};
-    }):[];
-    return{casinos,users};
-  }
-
-  if(p.startsWith('/api/casino/')&&method==='GET'){
-    const c=db.casinos[p.slice(12)];if(!c)throw err(404,'Казик не найден');return pub(c);
-  }
-
-  if(p==='/api/casino/create'){
-    if(casinoOf(u))throw err(400,'У тебя уже есть казик. Удали его в настройках.');
-    if(!CODE.test(String(b.code||'').trim()))throw err(400,'Код неверный. Нужно: Print(Hello World)');
-    const name=String(b.name||'').trim();
-    if(!name||name.length>24)throw err(400,'Название: 1–24 символа');
-    const id='c'+Date.now().toString(36)+crypto.randomBytes(2).toString('hex');
-    db.casinos[id]={id,name,owner:u.nick,members:[u.nick],team:!!b.team,metric:10000,lv:{}};
-    return{id};
-  }
-
-  if(p==='/api/casino/upgrade'){
-    const c=casinoOf(u);if(!c)throw err(400,'Нет казика');
-    const d=UPS[b.k];if(!d)throw err(400,'Нет такого улучшения');
-    const n=c.lv[b.k]||0,cost=d.cost*2**n;
-    if(u.coins<cost)throw err(400,'Не хватает монет');
-    u.coins-=cost;c.metric-=d.red*2**n;c.lv[b.k]=n+1;return{ok:1};
-  }
-
-  if(p==='/api/casino/delete'){
-    const c=casinoOf(u);if(!c)throw err(400,'Нет казика');
-    c.members.forEach(m=>m!==u.nick&&notify(m,`Казик «${c.name}» удалён`));
-    delete db.casinos[c.id];return{ok:1};
-  }
-
-  if(p==='/api/casino/invite'){
-    const c=casinoOf(u);if(!c||!c.team)throw err(400,'Это не командный казик');
-    const t=db.users[String(b.nick||'').trim().toLowerCase()];
-    if(!t)throw err(404,'Такого игрока нет');
-    if(casinoOf(t))throw err(400,'У игрока уже есть казик');
-    c.members.push(t.nick);notify(t.nick,`${u.nick} позвал(а) тебя в команду «${c.name}»`);return{ok:1};
-  }
-
-  if(p==='/api/tap'){
-    const now=Date.now();
-    let n=Math.floor(+b.n)||0;
-    n=Math.min(n,Math.max(1,Math.ceil((now-u.lastTap)/60)),100);
-    if(n>0){u.coins+=n*u.tap;u.lastTap=now}
-    return{coins:u.coins};
-  }
-
-  if(p==='/api/hup'){
-    if(b.t==='tap'){const c=50*2**u.tapLv;if(u.coins<c)throw err(400,'Не хватает монет');u.coins-=c;u.tapLv++;u.tap+=5}
-    else if(b.t==='auto'){const c=100*2**u.autoLv;if(u.coins<c)throw err(400,'Не хватает монет');u.coins-=c;u.autoLv++;u.auto+=5}
-    else throw err(400,'?');
-    return{user:userPub(u)};
-  }
-
-  if(p==='/api/slots'){
-    const c=db.casinos[b.id];if(!c)throw err(404,'Казик не найден');
-    const bet=Math.floor(+b.bet);
-    if(!(bet>=3))throw err(400,'Минимальная ставка 3');
-    if(bet>u.coins)throw err(400,'Не хватает монет');
-    u.coins-=bet;
-    const grid=[0,1,2].map(()=>[0,1,2,3,4].map(()=>FR[Math.floor(Math.random()*FR.length)]));
-    let sum=0;const win={};
-    grid.forEach((row,i)=>{
-      const cnt={};row.forEach(f=>cnt[f.s]=(cnt[f.s]||0)+1);
-      FR.forEach(f=>{if(cnt[f.s]>=3){sum+=bet/3*f.v*(cnt[f.s]-2);win[i]=f.s}});
-    });
-    const total=Math.floor(sum*factor(c));
-    u.coins+=total;
-    const net=bet-total;
-    if(net>0&&!c.bot&&c.members.length){
-      const each=Math.floor(net/c.members.length);
-      c.members.forEach((m,i)=>{const x=db.users[m.toLowerCase()];if(x)x.coins+=each+(i===0?net-each*c.members.length:0)});
-    }
-    return{grid:grid.map(r=>r.map(f=>f.s)),win,total,coins:u.coins};
-  }
-
-  if(p==='/api/battle'){
-    const a=casinoOf(u);if(!a)throw err(400,'Сначала создай свой казик');
-    const t=db.casinos[b.id];if(!t)throw err(404,'Казик не найден');
-    if(t.id===a.id)throw err(400,'Нельзя бить самого себя');
-    const now=Date.now();
-    if(now-u.lastBattle<30000)throw err(429,`Подожди ${Math.ceil((30000-(now-u.lastBattle))/1000)} сек.`);
-    u.lastBattle=now;
-    const result=a.metric<t.metric?'win':a.metric>t.metric?'lose':'draw';
-    if(result==='win')u.coins+=200;
-    t.members.forEach(m=>notify(m,`${u.nick} бросил(а) вызов казику «${t.name}»: ${result==='win'?'вы проиграли':result==='lose'?'вы победили':'ничья'}`));
-    return{result,a:{name:a.name,metric:a.metric},b:{name:t.name,metric:t.metric},coins:u.coins};
-  }
-
-  throw err(404,'Не найдено');
+async function refresh(){
+  const j=await api('me');
+  me=j.user;myc=j.casino;j.notes.forEach(toast);
+  $('#who').textContent='Ты: '+me.nick;upCoins();
+}
+async function poll(){
+  if(tapBuf>0||spinning)return;
+  try{await refresh();renderMenu()}catch{}
 }
 
-module.exports=async(req,res)=>{
-  let client,code=200,out;
+/* ---- menu / search ---- */
+let viewId=null;
+function renderMenu(){
+  $('#menu').innerHTML=`
+    <div class="item ${!viewId?'act':''}" onclick="viewId=null;showCasino()"><div class="ava">🎰</div><div><b>Мой казик</b><div class="sub">${myc?esc(myc.name):'ещё не создан'}</div></div></div>
+    <div class="item" onclick="openCreate(false)"><div class="ava">➕</div><div><b>Создать свой казик</b><div class="sub">для одного</div></div></div>
+    <div class="item" onclick="openCreate(true)"><div class="ava">👥</div><div><b>Создать с командой</b><div class="sub">вместе с друзьями</div></div></div>`;
+}
+function searchDeb(){clearTimeout(sdeb);sdeb=setTimeout(search,250)}
+async function search(){
+  const q=$('#q').value.trim(),r=$('#results');
+  if(!q){r.innerHTML='';return}
   try{
-    await init();
-    const url=new URL(req.url,'http://x');
-    const p=url.pathname.replace(/\/+$/,'')||'/';
-    let b=req.body;
-    if(typeof b==='string'){try{b=JSON.parse(b)}catch{b={}}}
-    b=b||{};
-    client=await getPool().connect();
-    await client.query('begin');
-    const r=await client.query('select data from store where id=1 for update');
-    const db=r.rows[0].data;
-    out=handle(db,req.method,p,url.searchParams,b,req.headers);
-    await client.query('update store set data=$1 where id=1',[JSON.stringify(db)]);
-    await client.query('commit');
-  }catch(e){
-    if(client)try{await client.query('rollback')}catch{}
-    code=Number.isInteger(e.code)&&e.code>=400&&e.code<500?e.code:500;
-    out={error:code===500?'Ошибка сервера':e.message};
-    if(code===500)console.error(e);
-  }finally{
-    if(client)client.release();
+    const j=await api('search?q='+encodeURIComponent(q));
+    let h='';
+    j.casinos.forEach(c=>h+=`<div class="item" onclick="openCas('${c.id}')"><div class="ava">${c.team?'👥':'🎰'}</div><div><b>${esc(c.name)}</b><div class="sub">${c.team?'команда · ':''}казик · ${esc(c.owner)}</div></div></div>`);
+    j.users.forEach(u=>h+=`<div class="item" ${u.casinoId?`onclick="openCas('${u.casinoId}')"`:''}><div class="ava">🙂</div><div><b>${esc(u.nick)}</b><div class="sub">${u.casinoName?'казик: '+esc(u.casinoName):'без казика'}</div></div></div>`);
+    r.innerHTML=h||'<div class="sub">Ничего не найдено</div>';
+  }catch(e){r.innerHTML='<div class="sub">'+esc(e.message)+'</div>'}
+}
+function openCas(id){viewId=id;tab='upgrade';showCasino()}
+
+/* ---- create ---- */
+function closePanel(){$('#panel').style.display='none'}
+function openCreate(team){
+  if(myc){toast('У тебя уже есть казик. Удали его в настройках.');return}
+  const p=$('#panel');p.style.display='flex';
+  p.innerHTML=`<h2>${team?'Казик с командой':'Свой казик'}</h2>
+  <div class="sub">Напиши код:</div><b>Print(Hello World)</b>
+  <input id="code" placeholder="Print(Hello World)">
+  <input id="cname" placeholder="Название казика" maxlength="24">
+  <div class="err" id="cerr"></div>
+  <button class="p" onclick="createCas(${team})">Создать</button>
+  <button onclick="closePanel()">Отмена</button>`;
+}
+async function createCas(team){
+  try{
+    await api('casino/create',{code:$('#code').value,name:$('#cname').value,team});
+    await refresh();viewId=null;tab='upgrade';closePanel();render();
+  }catch(e){$('#cerr').textContent=e.message}
+}
+
+/* ---- casino views ---- */
+async function render(){renderMenu();await showCasino()}
+async function showCasino(){
+  closePanel();renderMenu();
+  const ct=$('#content');
+  if(viewId&&!(myc&&myc.id===viewId)){
+    try{cur=await api('casino/'+viewId)}catch(e){ct.innerHTML='<div class="empty">'+esc(e.message)+'</div>';return}
+    renderForeign(cur);return;
   }
-  res.statusCode=code;
-  res.setHeader('content-type','application/json; charset=utf-8');
-  res.end(JSON.stringify(out));
-};
+  viewId=null;renderMenu();
+  if(!myc){ct.innerHTML='<div class="empty"><div><div style="font-size:60px">🎰</div><h2>У тебя пока нет казика</h2><div>Нажми «Создать свой казик» или «Создать с командой»</div></div></div>';return}
+  cur=myc;renderMine();
+}
+function head(c){
+  return `<div class="photo"><div class="big">${STAGES[Math.min(7,Math.floor(c.level/2))]}</div><h2>${esc(c.name)}${c.team?' (команда)':''}</h2>
+  <span class="stat">Выплаты игрокам: <b class="${c.metric<0?'ok':''}">${fmt(c.metric)}</b></span>
+  <span class="stat">Уровень: ${c.level}</span><span class="stat">Возврат ~${c.rtp}%</span><span class="stat">Владелец: ${esc(c.owner)}</span></div>`;
+}
+function renderForeign(c){
+  $('#content').innerHTML=head(c)+`<button class="p" ${myc?'':'disabled'} onclick="fight('${c.id}')">⚔️ Бросить вызов</button>
+  ${myc?'':'<div class="sub" style="margin-top:6px">Чтобы бросать вызов, создай свой казик</div>'}
+  <div class="msg" id="bmsg" style="margin:10px 0"></div><div id="tabc"></div>`;
+  tSlots(c,$('#tabc'));
+}
+function setTab(t){tab=t;renderMine()}
+function renderMine(){
+  const c=myc,tabs=[['upgrade','⬆️ Улучшение'],['hamster','🐹 Кликер хомяк'],['battle','⚔️ Бои'],['slots','🎰 Слоты'],['settings','⚙️ Настройки']];
+  $('#content').innerHTML=head(c)+`<div class="cas"><div class="menu">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('')}</div><div id="tabc"></div></div>`;
+  ({upgrade:tUp,hamster:tHam,battle:tBattle,slots:tSlots,settings:tSet})[tab](c,$('#tabc'));
+}
+
+function tUp(c,el){
+  el.innerHTML='<div class="box"><h3 style="margin-bottom:6px">Улучшения казика</h3><div class="sub">Каждое улучшение снижает выплаты игрокам. Чем ниже (даже в минус), тем лучше. Цена и эффект удваиваются.</div>'+
+  UPS.map(u=>{const n=(c.lv&&c.lv[u.k])||0,cost=u.cost*2**n,red=u.red*2**n;
+    return `<div class="row"><div><b>${u.n}</b> <span class="sub">ур. ${n}</span><div class="sub">−${fmt(red)} к выплатам</div></div><button class="p" onclick="buyUp('${u.k}')" ${me.coins<cost?'disabled':''}>🪙 ${fmt(cost)}</button></div>`}).join('')+'</div>';
+}
+async function buyUp(k){
+  try{await flushTap();await api('casino/upgrade',{k});await refresh();renderMine()}catch(e){toast(e.message)}
+}
+
+function tHam(c,el){
+  const tc=50*2**me.tapLv,ac=100*2**me.autoLv;
+  el.innerHTML=`<div class="box" style="text-align:center"><div class="sub">Тапай хомяка!</div>
+    <div id="ham" onclick="tap()">🐹</div><div class="sub">+${me.tap} за тап${me.auto?' · авто +'+me.auto+'/сек':''}</div></div>
+    <div class="box"><div class="row"><div><b>Сильная лапка</b> <span class="sub">ур. ${me.tapLv}</span><div class="sub">+5 монет за тап</div></div><button class="p" onclick="hUp('tap')">🪙 ${fmt(tc)}</button></div>
+    <div class="row"><div><b>Хомяк-помощник</b> <span class="sub">ур. ${me.autoLv}</span><div class="sub">+5 монет в секунду</div></div><button class="p" onclick="hUp('auto')">🪙 ${fmt(ac)}</button></div></div>`;
+}
+function tap(){me.coins+=me.tap;tapBuf++;upCoins()}
+async function flushTap(){
+  if(!tapBuf)return;const n=tapBuf;tapBuf=0;
+  try{const j=await api('tap',{n});me.coins=j.coins;upCoins()}catch{}
+}
+async function hUp(t){
+  try{await flushTap();const j=await api('hup',{t});me=j.user;upCoins();renderMine()}catch(e){toast(e.message)}
+}
+
+async function tBattle(c,el){
+  el.innerHTML='<div class="box"><h3>Бои казиков</h3><div class="sub">Побеждает казик с меньшими выплатами игрокам. Победа даёт +200 🪙. Пауза между боями 30 сек.</div><div class="msg" id="bmsg" style="margin-top:10px"></div><div id="blist" class="sub">Загрузка…</div></div>';
+  try{
+    const j=await api('search?q=');
+    $('#blist').innerHTML=j.casinos.filter(x=>x.id!==c.id).map(o=>`<div class="row"><div><b>${esc(o.name)}</b><div class="sub">Выплаты: ${fmt(o.metric)} · ${esc(o.owner)}</div></div><button class="p" onclick="fight('${o.id}')">Бросить вызов</button></div>`).join('')||'Других казиков пока нет';
+  }catch(e){$('#blist').textContent=e.message}
+}
+async function fight(id){
+  const m=$('#bmsg');
+  try{
+    await flushTap();
+    const j=await api('battle',{id});me.coins=j.coins;upCoins();
+    const t=j.result==='win'?`<span class="ok">🏆 Победа! «${esc(j.a.name)}» (${fmt(j.a.metric)}) лучше «${esc(j.b.name)}» (${fmt(j.b.metric)}). +200 🪙</span>`
+      :j.result==='lose'?`<span class="bad">💀 Поражение. У «${esc(j.b.name)}» выплаты ниже (${fmt(j.b.metric)} против ${fmt(j.a.metric)}).</span>`:'Ничья!';
+    if(m)m.innerHTML=t;
+  }catch(e){if(m)m.innerHTML='<span class="bad">'+esc(e.message)+'</span>';else toast(e.message)}
+}
+
+/* ---- slots ---- */
+const rf=()=>FR[Math.floor(Math.random()*FR.length)][0];
+const randGrid=()=>[0,1,2].map(()=>[0,1,2,3,4].map(rf));
+function tSlots(c,el){
+  if(!grid)grid=randGrid();
+  el.innerHTML=`<div class="box"><h3>Слоты «${esc(c.name)}»</h3>
+  <div class="sub">3 строки по 5 фруктов. 3 и больше одинаковых в строке дают выигрыш: ставка/3 × множитель × (количество−2), а потом умножается на «Возврат» казика (~${c.rtp}%).<br>${FR.map(f=>f[0]+' x'+f[1]).join(' · ')}</div>
+  <div class="slots" id="grid"></div><div class="msg" id="smsg"></div>
+  <div style="display:flex;gap:8px"><input id="bet" type="number" min="3" value="30"><button class="p" id="spin" onclick="spin('${c.id}')">Крутить</button></div></div>`;
+  drawGrid();
+}
+function drawGrid(win){
+  const g=$('#grid');if(!g)return;
+  g.innerHTML=grid.map((r,i)=>`<div class="srow">${r.map(f=>`<div class="cell ${win&&win[i]===f?'w':''}">${f}</div>`).join('')}</div>`).join('');
+}
+async function spin(id){
+  if(spinning)return;
+  const bet=Math.floor(+$('#bet').value);
+  spinning=true;$('#spin').disabled=true;
+  await flushTap();
+  const iv=setInterval(()=>{grid=randGrid();drawGrid()},70);
+  let html;
+  try{
+    const [j]=await Promise.all([api('slots',{id,bet}),new Promise(r=>setTimeout(r,700))]);
+    clearInterval(iv);grid=j.grid;drawGrid(j.win);me.coins=j.coins;upCoins();
+    html=j.total>0?`<span class="ok">Выигрыш: +${fmt(j.total)} 🪙</span>`:'<span class="bad">Не повезло…</span>';
+  }catch(e){clearInterval(iv);html='<span class="bad">'+esc(e.message)+'</span>'}
+  const m=$('#smsg');if(m)m.innerHTML=html;
+  spinning=false;const b=$('#spin');if(b)b.disabled=false;
+}
+
+/* ---- settings ---- */
+function tSet(c,el){
+  el.innerHTML=`<div class="box"><h3>Настройки казика</h3>
+  <div class="row"><div><b>Название</b><div class="sub">${esc(c.name)}</div></div></div>
+  <div class="row"><div><b>Участники</b><div class="sub">${c.members.map(esc).join(', ')}</div></div></div>
+  ${c.team?`<div class="row" style="flex-direction:column;align-items:stretch"><b>Пригласить в команду</b><div style="display:flex;gap:8px;margin-top:6px"><input id="inv" placeholder="Ник игрока"><button class="p" onclick="invite()">Позвать</button></div><div class="msg" id="imsg" style="margin-top:6px"></div></div>`:''}
+  <div class="row"><div><b>Удалить казик</b><div class="sub">После этого можно создать новый</div></div><button class="d" onclick="delCas()">Удалить</button></div></div>`;
+}
+async function invite(){
+  try{await api('casino/invite',{nick:$('#inv').value});await refresh();renderMine()}
+  catch(e){$('#imsg').innerHTML='<span class="bad">'+esc(e.message)+'</span>'}
+}
+async function delCas(){
+  if(!confirm('Точно удалить «'+myc.name+'»?'))return;
+  try{await api('casino/delete',{});await refresh();tab='upgrade';viewId=null;render()}catch(e){toast(e.message)}
+}
+
+if(token)boot();
+</script>
+</body>
+</html>
