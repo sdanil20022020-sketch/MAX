@@ -160,6 +160,7 @@ function handle(db,method,p,q,b,headers){
     t.members.forEach(m=>notify(m,`${u.nick} бросил(а) вызов казику «${t.name}»: ${result==='win'?'вы проиграли':result==='lose'?'вы победили':'ничья'}`));
     return{result,a:{name:a.name,metric:a.metric},b:{name:t.name,metric:t.metric},coins:u.coins};
   }
+
   if(p.startsWith('/api/tank/')){
     const PR={baby:0,scout:150,fighter:400,heavy:900,sniper:1500,rapid:2500};
     db.rooms=db.rooms||{};
@@ -180,11 +181,13 @@ function handle(db,method,p,q,b,headers){
       if(!u.tanks.includes(id))throw err(400,'Танк не куплен');
       u.tank=id;return{ok:1};
     }
-    if(p==='/api/tank/rooms')return{rooms:Object.values(db.rooms).filter(r=>r.host!==u.nick).map(r=>({host:r.host,peer:r.peer,players:r.players}))};
+    if(p==='/api/tank/rooms')return{rooms:Object.values(db.rooms).filter(r=>r.host!==u.nick).map(r=>({host:r.host,peer:r.peer,players:r.players,map:r.map,max:r.max}))};
     if(p==='/api/tank/room'){
       const peer=String(b.peer||'');
       if(!/^[\w-]{5,80}$/.test(peer))throw err(400,'Плохой id');
-      db.rooms[u.nick]={host:u.nick,peer,players:Math.min(4,Math.max(1,Math.floor(+b.players)||1)),t:now};
+      const map=['forest','desert','city','snow'].includes(b.map)?b.map:'forest';
+      const mx=Math.min(10,Math.max(1,Math.floor(+b.max)||4));
+      db.rooms[u.nick]={host:u.nick,peer,players:Math.min(mx,Math.max(1,Math.floor(+b.players)||1)),map,max:mx,t:now};
       return{ok:1};
     }
     if(p==='/api/tank/leave'){delete db.rooms[u.nick];return{ok:1}}
@@ -201,6 +204,7 @@ function handle(db,method,p,q,b,headers){
       return{got,coins:u.coins};
     }
   }
+
   throw err(404,'Не найдено');
 }
 
