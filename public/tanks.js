@@ -6,16 +6,32 @@ const TK={
  fighter:{n:'Боец',hp:130,sp:115,rl:.7,dm:24,bs:350,tr:2.4,col:'#4f6f3a',price:400,sz:1.05},
  heavy:{n:'Тяжёлый',hp:230,sp:70,rl:1.3,dm:45,bs:300,tr:1.5,col:'#56603f',price:900,sz:1.25},
  sniper:{n:'Снайпер',hp:90,sp:100,rl:1.8,dm:70,bs:560,tr:1.8,col:'#8d9298',price:1500,sz:1},
- rapid:{n:'Скорострел',hp:110,sp:120,rl:.25,dm:9,bs:380,tr:2.6,col:'#a08a55',price:2500,sz:1}
+ rapid:{n:'Скорострел',hp:110,sp:120,rl:.3,dm:16,bs:380,tr:2.6,col:'#a08a55',price:2500,sz:1},
+ rapier:{n:'Рапира',hp:100,sp:150,rl:.5,dm:22,bs:400,tr:3.2,col:'#3f7fa6',price:4000,sz:.95},
+ guard:{n:'Страж',hp:190,sp:95,rl:.9,dm:30,bs:340,tr:2,col:'#5c6f8a',price:6000,sz:1.1},
+ storm:{n:'Буря',hp:125,sp:130,rl:.4,dm:18,bs:420,tr:2.8,col:'#7a4fa3',price:9000,sz:1},
+ titan:{n:'Титан',hp:420,sp:55,rl:1.8,dm:85,bs:320,tr:1.1,col:'#4a4f57',price:15000,sz:1.4},
+ phantom:{n:'Призрак',hp:70,sp:185,rl:.5,dm:28,bs:450,tr:3.6,col:'#2d3a4a',price:22000,sz:.88},
+ howitzer:{n:'Гаубица',hp:150,sp:60,rl:2.6,dm:130,bs:500,tr:1.2,col:'#7d6b3a',price:35000,sz:1.15},
+ destroyer:{n:'Разрушитель',hp:310,sp:85,rl:1.1,dm:58,bs:380,tr:1.6,col:'#8a3030',price:50000,sz:1.3},
+ legend:{n:'Легенда',hp:270,sp:125,rl:.45,dm:42,bs:480,tr:2.6,col:'#c9a227',price:100000,sz:1.2}
 };
-const ORDER=['baby','scout','fighter','heavy','sniper','rapid'];
+const ORDER=['baby','scout','fighter','heavy','sniper','rapid','rapier','guard','storm','titan','phantom','howitzer','destroyer','legend'];
 const MD={
  baby:{sl:1,tt:'round',tr:7.5,th:5,gun:18,gt:2.6,wh:5,sk:0,br:0,twin:0},
  scout:{sl:1,tt:'round',tr:6.5,th:4.2,gun:16,gt:2.2,wh:4,sk:0,br:0,twin:0},
  fighter:{sl:1,tt:'round',tr:8.2,th:6,gun:24,gt:3,wh:5,sk:0,br:1,twin:0},
  heavy:{sl:1,tt:'round',tr:10.5,th:7.5,gun:26,gt:4.2,wh:6,sk:0,br:1,twin:0},
  sniper:{sl:0,tt:'box',tl:14,tw:15,th:6.5,gun:38,gt:2.6,wh:4,sk:1,br:1,twin:0},
- rapid:{sl:0,tt:'box',tl:13,tw:14,th:6,gun:15,gt:2.2,wh:4,sk:1,br:0,twin:1}
+ rapid:{sl:0,tt:'box',tl:13,tw:14,th:6,gun:15,gt:2.2,wh:4,sk:1,br:0,twin:1},
+ rapier:{sl:1,tt:'round',tr:6.8,th:4.6,gun:22,gt:2.2,wh:5,sk:0,br:1,twin:0},
+ guard:{sl:0,tt:'box',tl:13,tw:14,th:6.2,gun:24,gt:3.2,wh:5,sk:1,br:1,twin:0},
+ storm:{sl:1,tt:'round',tr:8,th:5.2,gun:16,gt:2,wh:5,sk:0,br:0,twin:1},
+ titan:{sl:1,tt:'round',tr:12,th:9,gun:30,gt:5,wh:7,sk:1,br:1,twin:0},
+ phantom:{sl:1,tt:'round',tr:6,th:3.8,gun:20,gt:1.9,wh:4,sk:0,br:1,twin:0},
+ howitzer:{sl:0,tt:'box',tl:16,tw:16,th:8,gun:34,gt:4.8,wh:5,sk:1,br:1,twin:0},
+ destroyer:{sl:0,tt:'box',tl:18,tw:15,th:6,gun:36,gt:4,wh:6,sk:1,br:1,twin:0},
+ legend:{sl:1,tt:'round',tr:9.5,th:6.5,gun:28,gt:3.4,wh:6,sk:1,br:1,twin:1}
 };
 const BORDER=[[0,0,800,20],[0,500,800,20],[0,0,20,520],[780,0,20,520]];
 const MAPS={
@@ -46,6 +62,7 @@ let G=null,curTab='garage',sel='baby',owned=['baby'],roomsTimer=null,pickMap='fo
 const ks={};let md=false;
 const T={l:null,r:null,mx:0,my:0,fire:false};
 const V={yaw:0,aim:0,pitch:.05,scope:false,fov:62};
+const PMAX=1.45;
 const clamp=v=>Math.max(-1,Math.min(1,v));
 const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
 const isMobile=()=>('ontouchstart' in window)||(navigator.maxTouchPoints>0);
@@ -231,7 +248,7 @@ function onMM(e){
   if(!G||!G.d||document.pointerLockElement!==G.d.root)return;
   const k=V.scope?.4:1;
   V.aim+=e.movementX*.0024*k;
-  V.pitch=cl(V.pitch-e.movementY*.0016*k,-.08,.4);
+  V.pitch=cl(V.pitch-e.movementY*.0016*k,-PMAX,PMAX);
 }
 function onMU(e){if(e.button===0)md=false;if(e.button===2)V.scope=false}
 function onBlur(){for(const k in ks)ks[k]=false;md=false;T.fire=false}
@@ -248,21 +265,24 @@ function loadScript(src,test){
 const loadPeer=()=>loadScript('https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js',()=>!!window.Peer);
 const loadThree=()=>loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',()=>!!window.THREE);
 
-async function reward(kills,win){
+async function sendResult(kills,win,online,played){
   try{
-    const j=await api('tank/reward',{kills,win});
-    if(j.got>0)toast('+'+j.got+' 🪙 за бой');
+    const j=await api('tank/result',{kills,win,mode:online?'online':'train',played:Math.round(played)});
+    if(j.delta>0)toast('+'+fmt(j.delta)+' 🪙 за бой');
+    else if(j.delta<0)toast('Проигрыш: '+fmt(j.delta)+' 🪙');
     me.coins=j.coins;upCoins();
   }catch(e){}
 }
 function checkEnd(g){
   const v=g.view;if(!v)return;
-  if(v.over&&!g.ended){
-    g.ended=true;
-    const m=v.tanks.find(t=>t.id===g.myId);
-    reward(m?m.kills:0,v.winner===g.myId);
-  }
-  if(!v.over)g.ended=false;
+  const now=performance.now();
+  if(!v.over){g.ended=false;if(!g.rs)g.rs=now;return}
+  if(g.ended)return;
+  g.ended=true;
+  const m=v.tanks.find(t=>t.id===g.myId);
+  const played=g.rs?(now-g.rs)/1000:0;g.rs=0;
+  const online=g.online&&v.tanks.length>=2;
+  sendResult(m?m.kills:0,v.winner===g.myId,online,played);
 }
 
 async function startHost(online,mapId,max){
@@ -527,7 +547,7 @@ function mountGame(g,title){
   document.body.appendChild(root);
   const q=s=>root.querySelector(s);
   q('#ttl').textContent=title;
-  q('#thint').innerHTML=mobile?'Левый стик: ехать<br>Правая половина: вращать обзор':'WASD: ехать · мышь: обзор<br>ЛКМ: огонь · ПКМ (держать): прицел<br>Esc: отпустить мышь';
+  q('#thint').innerHTML=mobile?'Левый стик: ехать<br>Правая половина: вращать обзор':'WASD: ехать · мышь: обзор (вверх и вниз тоже)<br>ЛКМ: огонь · ПКМ (держать): прицел<br>Esc: отпустить мышь';
 
   let r;
   try{
@@ -604,7 +624,7 @@ function mountGame(g,title){
       }else if(T.r&&c.identifier===T.r.id){
         const k=V.scope?.4:1;
         V.aim+=(c.clientX-T.r.lx)*.006*k;
-        V.pitch=cl(V.pitch-(c.clientY-T.r.ly)*.003*k,-.08,.4);
+        V.pitch=cl(V.pitch-(c.clientY-T.r.ly)*.004*k,-PMAX,PMAX);
         T.r.lx=c.clientX;T.r.ly=c.clientY;
       }
     }
@@ -694,7 +714,7 @@ function frame(now){
     else f.scale.setScalar(1+(.3-f.userData.l)*8);
   }
 
-  // камера
+  // камера (свободно вверх и вниз)
   const o=g.myId&&d.tanks[g.myId];
   if(o&&m){
     if(!d.wasAlive&&m.alive){V.aim=V.yaw=Math.atan2(H/2-m.y,W/2-m.x)}
@@ -705,13 +725,14 @@ function frame(now){
   const sc=V.scope;
   V.fov+=((sc?16:62)-V.fov)*(1-Math.exp(-dt*12));
   d.cam.fov=V.fov;d.cam.updateProjectionMatrix();
-  const cy=Math.cos(V.yaw),sy=Math.sin(V.yaw);
-  let cx,cz,ch;
-  if(sc){cx=px+cy*10;cz=pz+sy*10;ch=19}
-  else{cx=px-cy*64;cz=pz-sy*64;ch=36}
+  const cy=Math.cos(V.yaw),sy=Math.sin(V.yaw),cp=Math.cos(V.pitch),sp=Math.sin(V.pitch);
+  const fx0=cp*cy,fy0=sp,fz0=cp*sy;
+  let cx,camY,cz;
+  if(sc){cx=px+cy*10;camY=19;cz=pz+sy*10}
+  else{cx=px-fx0*64;camY=Math.max(4,18-fy0*64);cz=pz-fz0*64}
   cx=cl(cx,12,788);cz=cl(cz,12,508);
-  d.cam.position.set(cx,ch,cz);
-  d.cam.lookAt(cx+cy*200,15+Math.tan(V.pitch)*200,cz+sy*200);
+  d.cam.position.set(cx,camY,cz);
+  d.cam.lookAt(cx+fx0*200,camY+fy0*200,cz+fz0*200);
   d.cam.updateMatrixWorld();
   d.cam.matrixWorldInverse.copy(d.cam.matrixWorld).invert();
 
@@ -806,7 +827,7 @@ function play(){
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="p" onclick="TK_train()">🤖 Тренировка с ботами</button><button class="p" onclick="TK_host()">🌐 Создать онлайн-комнату</button></div></div>
   <div class="box"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b>Комнаты</b><button onclick="TK_refresh()">Обновить</button></div><div id="rooms" class="sub">Загрузка…</div></div>
-  <div class="sub">3D-бой от третьего лица. ПК: мышь, WASD, ПКМ — прицел. Телефон: горизонтально, левый стик едет, правая половина экрана вращает обзор. Цвет прицела: красный — рикошет, жёлтый — малый урон, зелёный — полный. Победа = 10 убийств, награда 3 🪙 за убийство и +20 🪙 за победу.</div>`;
+  <div class="sub">3D-бой от третьего лица. ПК: мышь (вверх и вниз тоже), WASD, ПКМ — прицел. Телефон: горизонтально, левый стик едет, правая половина экрана вращает обзор. Цвет прицела: красный — рикошет, жёлтый — малый урон, зелёный — полный. Победа = 10 убийств. Онлайн: победа +50 000 🪙, поражение −10 000 🪙. Тренировка: 3 🪙 за убийство и +500 за победу.</div>`;
   loadRooms();
   roomsTimer=setInterval(loadRooms,4000);
 }
@@ -822,20 +843,12 @@ async function loadRooms(){
   }catch(e){el.textContent=e.message}
 }
 
+window.TKINFO=TK;
 Object.assign(window,{
-  openTanks:()=>showTanks('garage'),
+  TK_open:()=>showTanks('garage'),
   TK_tab:t=>showTanks(t),TK_buy:buy,TK_sel:select,
   TK_train:()=>{readPick();startHost(false,pickMap,4)},
   TK_host:()=>{readPick();startHost(true,pickMap,pickMax)},
   TK_join:(p,mp)=>startClient(p,mp),TK_refresh:loadRooms
 });
-
-/* ---------- пункт меню ---------- */
-const _rm=renderMenu;
-renderMenu=function(){
-  _rm();
-  const m=$('#menu');
-  if(m)m.insertAdjacentHTML('beforeend','<div class="item" onclick="openTanks()"><div class="ava">🪖</div><div><b>Танки</b><div class="sub">покупай танки и играй онлайн</div></div></div>');
-};
-if(typeof me!=='undefined'&&me)renderMenu();
 })();
