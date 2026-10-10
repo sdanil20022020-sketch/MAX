@@ -7,23 +7,26 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,Roboto,Arial,sans-serif}
 :root{--bg:#0f1115;--panel:#181b22;--panel2:#1f232c;--line:#2a2f3a;--txt:#eef0f5;--mut:#8b93a5;--acc:#5b6cff;--acc2:#9b5bff;--ok:#2ecc71;--bad:#ff5a6a}
-body{background:var(--bg);color:var(--txt);height:100vh;overflow:hidden}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);overflow:hidden}
 button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;background:var(--panel2);color:var(--txt);font-size:14px;transition:.15s}
 button:hover{filter:brightness(1.2)}
 button.p{background:linear-gradient(135deg,var(--acc),var(--acc2));font-weight:600}
 button.d{background:var(--bad)}
+button.acc{background:#2ecc71;color:#06220f;font-weight:700}
+button.dec{background:#ff5a6a;color:#fff;font-weight:700}
 button:disabled{opacity:.4;cursor:not-allowed}
-input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-size:14px;outline:0}
+input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-size:14px;outline:0}
 input:focus{border-color:var(--acc)}
 .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:1px}
 .ico{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center}
 .ico svg{width:22px;height:22px}
-#auth{height:100vh;display:grid;place-items:center}
+#auth{height:100vh;display:grid;place-items:center;overflow:auto}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;width:340px;display:flex;flex-direction:column;gap:12px}
 .card .logo{justify-content:center;margin-bottom:6px}
 .err{color:var(--bad);font-size:13px;min-height:16px}
-#app{display:none;height:100vh;grid-template-columns:320px 1fr}
-#side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px;gap:12px;overflow:auto}
+#app{display:none;height:100vh;height:100dvh;grid-template-columns:320px minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+#side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px;gap:12px;overflow-y:auto;min-height:0}
 .top{display:flex;justify-content:space-between;align-items:center}
 .gear{padding:5px 9px;font-size:19px;background:transparent}
 .coins{background:var(--panel2);padding:6px 12px;border-radius:20px;font-weight:600;font-size:14px}
@@ -32,14 +35,14 @@ input:focus{border-color:var(--acc)}
 .item:hover{background:#272c38}
 .item.act{outline:2px solid var(--acc)}
 .item .ava,.ava0{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;font-size:18px;flex:none;font-weight:700}
-.badge{background:var(--bad);color:#fff;border-radius:10px;padding:2px 8px;font-size:12px;font-weight:700}
+.badge{background:var(--bad);color:#fff;border-radius:10px;min-width:20px;text-align:center;padding:2px 7px;font-size:12px;font-weight:700}
 .sub{color:var(--mut);font-size:12px}
 .h{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
-#main{display:flex;min-width:0}
-#content{flex:1;padding:22px;overflow:auto;min-width:0}
-#panel{width:340px;background:var(--panel);border-left:1px solid var(--line);padding:20px;display:none;flex-direction:column;gap:12px}
+#main{display:flex;min-width:0;min-height:0;overflow:hidden}
+#content{flex:1;padding:22px;overflow-y:auto;min-width:0;min-height:0;-webkit-overflow-scrolling:touch}
+#panel{width:340px;background:var(--panel);border-left:1px solid var(--line);padding:20px;display:none;flex-direction:column;gap:12px;overflow-y:auto}
 .empty{height:100%;display:grid;place-items:center;color:var(--mut);text-align:center}
-.cas{display:grid;grid-template-columns:200px 1fr;gap:18px}
+.cas{display:grid;grid-template-columns:200px minmax(0,1fr);gap:18px}
 .menu{display:flex;flex-direction:column;gap:8px}
 .menu button{text-align:left}
 .menu button.on{background:linear-gradient(135deg,var(--acc),var(--acc2))}
@@ -62,9 +65,14 @@ input:focus{border-color:var(--acc)}
 h2{margin-bottom:12px}
 #toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:300}
 .toast{background:var(--panel2);border:1px solid var(--acc);padding:10px 14px;border-radius:12px;max-width:320px;font-size:14px}
-#modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:150;display:grid;place-items:center;padding:16px}
+.ovl{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:150;display:grid;place-items:center;padding:16px}
 .mbox{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;width:min(480px,100%);max-height:92vh;overflow:auto}
-@media(max-width:900px){#app{grid-template-columns:1fr;grid-template-rows:auto 1fr}#side{max-height:40vh}.cas{grid-template-columns:1fr}#panel{position:fixed;right:0;top:0;bottom:0;z-index:5}}
+@media(max-width:900px){
+  #app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  #side{max-height:42vh}
+  .cas{grid-template-columns:minmax(0,1fr)}
+  #panel{position:fixed;right:0;top:0;bottom:0;z-index:5;max-width:100%}
+}
 </style>
 </head>
 <body>
@@ -105,16 +113,16 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=n=>Math.round(n).toLocaleString('ru-RU');
 const UPS=[
- {k:'a',n:'Охрана и камеры',cost:30,red:100},
- {k:'b',n:'Налог на выигрыш',cost:60,red:150},
- {k:'c',n:'Жадный дилер',cost:120,red:300},
- {k:'d',n:'VIP-казначей',cost:250,red:600},
- {k:'e',n:'Скрытая комиссия',cost:500,red:1500}];
+ {k:'cam',n:'Охрана и камеры',b:100,c:1000},
+ {k:'vip',n:'VIP-комнаты',b:1000,c:15000},
+ {k:'tip',n:'Чаевые казику',b:5000,c:80000},
+ {k:'ad',n:'Реклама казика',b:20000,c:400000}];
+const MAXL=30,MAXTAP=25;
 const FR=[['🍋',2],['🍒',3],['🍇',4],['🍉',5],['🍊',6],['⭐',10]];
 const STAGES=['🏚️','🏠','🏪','🏢','🏦','🏰','🏙️','🌆'];
 
 let token=localStorage.getItem('max_token'),me=null,myc=null,cur=null,tab='upgrade',tapBuf=0,spinning=false,grid=null,sdeb=null;
-let sect='casino',viewId=null,badges={fr:0,br:0},btab='search',pnick=null,fdeb=null,bdeb=null;
+let sect='casino',viewId=null,badges={fr:0,br:0,tm:0},btab='search',pnick=null,fdeb=null,bdeb=null;
 
 /* ---- аккаунты в браузере ---- */
 const accs=()=>{try{return JSON.parse(localStorage.getItem('max_accs')||'[]')}catch{return[]}};
@@ -148,6 +156,13 @@ function av(n,v,s){
 function renderWho(){
   $('#who').innerHTML=av(me.nick,me.av,34)+`<div><div style="font-weight:600">${esc(me.nick)}</div><div class="sub">⚙️ Настройки</div></div>`;
 }
+function askYN(text,yes){
+  const o=document.createElement('div');o.className='ovl';o.style.zIndex=250;
+  o.innerHTML=`<div class="mbox"><div style="font-size:16px;margin-bottom:16px">${text}</div><div style="display:flex;gap:10px"><button class="acc" style="flex:1" id="yy">Да</button><button class="dec" style="flex:1" id="nn">Нет</button></div></div>`;
+  document.body.appendChild(o);
+  o.querySelector('#nn').onclick=()=>o.remove();
+  o.querySelector('#yy').onclick=()=>{o.remove();yes()};
+}
 
 /* ---- вход ---- */
 async function login(){
@@ -163,27 +178,30 @@ async function boot(){
   await render();
   setInterval(poll,5000);
   setInterval(flushTap,700);
+  setInterval(()=>{if(me&&myc&&myc.inc){me.coins+=myc.inc/Math.max(1,myc.members.length);upCoins()}},1000);
 }
 async function refresh(){
   const j=await api('me');
-  me=j.user;myc=j.casino;badges=j.badges||{fr:0,br:0};
+  me=j.user;myc=j.casino;badges=j.badges||{fr:0,br:0,tm:0};
   j.notes.forEach(toast);
   renderWho();upCoins();
 }
 async function poll(){
   if(tapBuf>0||spinning)return;
-  try{await refresh();renderMenu()}catch{}
+  try{await refresh();renderMenu();updTabBadges()}catch{}
 }
 
 /* ---- меню / поиск ---- */
 function renderMenu(){
   const it=(on,fn,ico,t,sub,b)=>`<div class="item ${on?'act':''}" onclick="${fn}"><div class="ava">${ico}</div><div style="flex:1"><b>${t}</b><div class="sub">${sub}</div></div>${b?`<span class="badge">${b}</span>`:''}</div>`;
   $('#menu').innerHTML=
-    it(sect==='casino'&&!viewId,"sect='casino';viewId=null;showCasino()",'🎰','Мой казик',myc?esc(myc.name):'ещё не создан',badges.br)+
-    it(false,'openCreate(false)','➕','Создать свой казик','для одного')+
-    it(false,'openCreate(true)','👥','Создать с командой','вместе с друзьями')+
-    it(sect==='tanks','openTanks()','🪖','Танки','покупай танки и играй онлайн')+
+    it(sect==='casino'&&!viewId,"viewId=null;showCasino()",'🎰','Мой казик',myc?esc(myc.name):'создать или вступить',(badges.br||0)+(badges.tm||0))+
+    it(sect==='tanks','openTanks()','🪖','Танки','магазин, гараж и бои',0)+
     it(sect==='friends','showFriends()','🤝','Друзья','заявки и профили',badges.fr);
+}
+function updTabBadges(){
+  const set=(id,n)=>{const e=$('#'+id);if(e){e.textContent=n;e.style.display=n?'inline-block':'none'}};
+  set('bd-battle',badges.br||0);set('bd-team',badges.tm||0);
 }
 function openTanks(){sect='tanks';viewId=null;pnick=null;closePanel();renderMenu();if(window.TK_open)TK_open();else toast('Танки ещё загружаются')}
 function searchDeb(){clearTimeout(sdeb);sdeb=setTimeout(search,250)}
@@ -203,7 +221,7 @@ function openCas(id){sect='casino';pnick=null;viewId=id;tab='upgrade';showCasino
 /* ---- создание казика ---- */
 function closePanel(){$('#panel').style.display='none'}
 function openCreate(team){
-  if(myc){toast('У тебя уже есть казик. Удали его в настройках.');return}
+  if(myc){toast('У тебя уже есть казик.');return}
   const p=$('#panel');p.style.display='flex';
   p.innerHTML=`<h2>${team?'Казик с командой':'Свой казик'}</h2>
   <div class="sub">Напиши код:</div><b>Print(Hello World)</b>
@@ -230,56 +248,66 @@ async function showCasino(){
     renderForeign(cur);return;
   }
   viewId=null;renderMenu();
-  if(!myc){ct.innerHTML='<div class="empty"><div><div style="font-size:60px">🎰</div><h2>У тебя пока нет казика</h2><div>Нажми «Создать свой казик» или «Создать с командой»</div></div></div>';return}
+  if(!myc){
+    ct.innerHTML=`<div class="photo"><div class="big">🎰</div><h2>У тебя пока нет казика</h2>
+      <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap"><button class="p" onclick="openCreate(false)">➕ Создать казик одному</button><button class="p" onclick="openCreate(true)">👥 Создать с командой</button></div></div>
+      <div class="box"><h3 style="margin-bottom:8px">📨 Заявки в команду</h3><div id="tmbody" class="sub">Загрузка…</div></div>`;
+    loadTeam('tmbody');return;
+  }
   cur=myc;renderMine();
 }
 function head(c){
-  return `<div class="photo"><div class="big">${STAGES[Math.min(7,Math.floor(c.level/2))]}</div><h2>${esc(c.name)}${c.team?' (команда)':''}</h2>
-  <span class="stat">Выплаты игрокам: <b class="${c.metric<0?'ok':''}">${fmt(c.metric)}</b></span>
-  <span class="stat">Уровень: ${c.level}</span><span class="stat">Возврат ~${c.rtp}%</span><span class="stat">Владелец: ${esc(c.owner)}</span></div>`;
+  return `<div class="photo"><div class="big">${STAGES[Math.min(7,Math.floor(c.level/3))]}</div><h2>${esc(c.name)}${c.team?' (команда)':''}</h2>
+  <span class="stat">Приносит: <b class="ok">${fmt(c.inc)} 🪙/сек</b></span>
+  <span class="stat">Уровень: ${c.level}</span><span class="stat">Создатель: ${esc(c.owner)}</span></div>`;
 }
 function renderForeign(c){
-  const can=myc&&!c.bot&&c.id!==myc.id;
-  $('#content').innerHTML=head(c)+(can?`<button class="p" onclick="battleReq('${esc(c.owner)}')">⚔️ Кинуть заявку на бой</button>`:'')+
-  `<div class="msg" id="bmsg" style="margin:10px 0"></div><div id="tabc"></div>`;
+  const canBattle=myc&&!c.bot&&c.id!==myc.id;
+  const canJoin=c.team&&!c.bot&&!c.members.includes(me.nick);
+  $('#content').innerHTML=head(c)+
+  `<div style="display:flex;gap:8px;flex-wrap:wrap">${canBattle?`<button class="p" onclick="battleReq('${esc(c.owner)}')">⚔️ Кинуть заявку на бой</button>`:''}${canJoin?`<button class="p" onclick="teamRequest('${c.id}')">👥 Подать заявку в команду</button>`:''}</div>
+  <div class="msg" id="bmsg" style="margin:10px 0"></div><div id="tabc"></div>`;
   tSlots(c,$('#tabc'));
 }
 function setTab(t){tab=t;renderMine()}
 function renderMine(){
-  const c=myc,tabs=[['upgrade','⬆️ Улучшение'],['hamster','🐹 Кликер хомяк'],['battle','⚔️ Бои'+(badges.br?' ('+badges.br+')':'')],['slots','🎰 Слоты'],['settings','⚙️ Настройки']];
-  $('#content').innerHTML=head(c)+`<div class="cas"><div class="menu">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}</button>`).join('')}</div><div id="tabc"></div></div>`;
-  ({upgrade:tUp,hamster:tHam,battle:tBattle,slots:tSlots,settings:tSet})[tab](c,$('#tabc'));
+  const c=myc;
+  const tabs=[['upgrade','⬆️ Улучшение'],['hamster','🐹 Кликер хомяк'],['battle','⚔️ Бои','battle'],['slots','🎰 Слоты'],['settings','⚙️ Настройки'],['team','📨 Заявки в команду','team']];
+  $('#content').innerHTML=head(c)+`<div class="cas"><div class="menu">${tabs.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="setTab('${t[0]}')">${t[1]}${t[2]?`<span class="badge" id="bd-${t[2]}" style="display:none;margin-left:6px"></span>`:''}</button>`).join('')}</div><div id="tabc"></div></div>`;
+  ({upgrade:tUp,hamster:tHam,battle:tBattle,slots:tSlots,settings:tSet,team:tTeam})[tab](c,$('#tabc'));
+  updTabBadges();
 }
 
 function tUp(c,el){
-  el.innerHTML='<div class="box"><h3 style="margin-bottom:6px">Улучшения казика</h3><div class="sub">Каждое улучшение снижает выплаты игрокам. Чем ниже (даже в минус), тем лучше. Цена и эффект удваиваются.</div>'+
-  UPS.map(u=>{const n=(c.lv&&c.lv[u.k])||0,cost=u.cost*2**n,red=u.red*2**n;
-    return `<div class="row"><div><b>${u.n}</b> <span class="sub">ур. ${n}</span><div class="sub">−${fmt(red)} к выплатам</div></div><button class="p" onclick="buyUp('${u.k}')" ${me.coins<cost?'disabled':''}>🪙 ${fmt(cost)}</button></div>`}).join('')+'</div>';
+  el.innerHTML='<div class="box"><h3 style="margin-bottom:6px">Улучшения казика</h3><div class="sub">Казик приносит монеты каждую секунду, даже когда тебя нет в сети. Доход и цена с каждым уровнем удваиваются. В команде доход делится поровну.</div>'+
+  UPS.map(u=>{
+    const n=(c.lv&&c.lv[u.k])||0,cost=u.c*Math.pow(2,n),gain=u.b*Math.pow(2,n);
+    return `<div class="row"><div><b>${u.n}</b> <span class="sub">ур. ${n}</span><div class="sub">${n>=MAXL?'максимум':'+'+fmt(gain)+' 🪙/сек'}</div></div><button class="p" onclick="buyUp('${u.k}')" ${n>=MAXL||me.coins<cost?'disabled':''}>${n>=MAXL?'MAX':'🪙 '+fmt(cost)}</button></div>`;
+  }).join('')+'</div>';
 }
 async function buyUp(k){
   try{await flushTap();await api('casino/upgrade',{k});await refresh();renderMine()}catch(e){toast(e.message)}
 }
 
 function tHam(c,el){
-  const tc=50*2**me.tapLv,ac=100*2**me.autoLv;
+  const tc=50*Math.pow(2,me.tapLv),gain=5*Math.pow(2,me.tapLv),mx=me.tapLv>=MAXTAP;
   el.innerHTML=`<div class="box" style="text-align:center"><div class="sub">Тапай хомяка!</div>
-    <div id="ham" onclick="tap()">🐹</div><div class="sub">+${me.tap} за тап${me.auto?' · авто +'+me.auto+'/сек':''}</div></div>
-    <div class="box"><div class="row"><div><b>Сильная лапка</b> <span class="sub">ур. ${me.tapLv}</span><div class="sub">+5 монет за тап</div></div><button class="p" onclick="hUp('tap')">🪙 ${fmt(tc)}</button></div>
-    <div class="row"><div><b>Хомяк-помощник</b> <span class="sub">ур. ${me.autoLv}</span><div class="sub">+5 монет в секунду</div></div><button class="p" onclick="hUp('auto')">🪙 ${fmt(ac)}</button></div></div>`;
+    <div id="ham" onclick="tap()">🐹</div><div class="sub">+${fmt(me.tap)} за тап</div></div>
+    <div class="box"><div class="row"><div><b>Сильная лапка</b> <span class="sub">ур. ${me.tapLv}</span><div class="sub">${mx?'максимум':'+'+fmt(gain)+' монет за тап'}</div></div><button class="p" onclick="hUp()" ${mx?'disabled':''}>${mx?'MAX':'🪙 '+fmt(tc)}</button></div></div>`;
 }
 function tap(){me.coins+=me.tap;tapBuf++;upCoins()}
 async function flushTap(){
   if(!tapBuf)return;const n=tapBuf;tapBuf=0;
   try{const j=await api('tap',{n});me.coins=j.coins;upCoins()}catch{}
 }
-async function hUp(t){
-  try{await flushTap();const j=await api('hup',{t});Object.assign(me,j.user);upCoins();renderMine()}catch(e){toast(e.message)}
+async function hUp(){
+  try{await flushTap();const j=await api('hup',{t:'tap'});Object.assign(me,j.user);upCoins();renderMine()}catch(e){toast(e.message)}
 }
 
 /* ---- бои казиков по заявкам ---- */
 function tBattle(c,el){
-  el.innerHTML=`<div class="box"><h3>Бои казиков</h3><div class="sub">Побеждает казик с меньшими выплатами игрокам. Победа: +50 000 🪙, поражение: −10 000 🪙. Перерыв между боями 10 минут.</div>
-  <div style="display:flex;gap:8px;margin:10px 0"><button class="${btab==='search'?'p':''}" onclick="btab='search';renderMine()">🔍 Поиск</button><button class="${btab==='inbox'?'p':''}" onclick="btab='inbox';renderMine()">📨 Заявки${badges.br?' ('+badges.br+')':''}</button></div>
+  el.innerHTML=`<div class="box"><h3>Бои казиков</h3><div class="sub">Побеждает казик, который приносит больше монет в секунду. Победа: +50 000 🪙, поражение: −10 000 🪙. Перерыв между боями 10 минут.</div>
+  <div style="display:flex;gap:8px;margin:10px 0"><button class="${btab==='search'?'p':''}" onclick="btab='search';renderMine()">🔍 Поиск</button><button class="${btab==='inbox'?'p':''}" onclick="btab='inbox';renderMine()">📨 Заявки</button></div>
   <div class="msg" id="bmsg"></div><div id="bbody"></div></div>`;
   if(btab==='search'){
     $('#bbody').innerHTML='<input id="bq" placeholder="Ник игрока" oninput="bSearchDeb()"><div id="bres" style="margin-top:8px" class="sub">Введи ник, чтобы найти игрока</div>';
@@ -291,7 +319,7 @@ async function bSearch(){
   if(!q){el.innerHTML='Введи ник, чтобы найти игрока';return}
   try{
     const j=await api('battle/search?q='+encodeURIComponent(q));
-    el.innerHTML=j.users.length?j.users.map(u=>`<div class="row"><div style="display:flex;align-items:center;gap:10px">${av(u.nick,u.av)}<div><b>${esc(u.nick)}</b><div class="sub">«${esc(u.casinoName)}» · выплаты ${fmt(u.metric)}</div></div></div><button class="p" onclick="battleReq('${esc(u.nick)}')">Кинуть заявку</button></div>`).join(''):'Никого не нашли (или у игрока нет казика)';
+    el.innerHTML=j.users.length?j.users.map(u=>`<div class="row"><div style="display:flex;align-items:center;gap:10px">${av(u.nick,u.av)}<div><b>${esc(u.nick)}</b><div class="sub">«${esc(u.casinoName)}» · ${fmt(u.inc)} 🪙/сек</div></div></div><button class="p" onclick="battleReq('${esc(u.nick)}')">Кинуть заявку</button></div>`).join(''):'Никого не нашли (или у игрока нет казика)';
   }catch(e){el.textContent=e.message}
 }
 async function battleReq(nick){
@@ -302,7 +330,7 @@ async function loadInbox(){
   const el=$('#bbody');if(!el)return;
   try{
     const j=await api('battle/inbox');
-    el.innerHTML=j.inbox.length?j.inbox.map(u=>`<div class="row"><div style="display:flex;align-items:center;gap:10px">${av(u.nick,u.av)}<div><b>${esc(u.nick)}</b><div class="sub">«${esc(u.casinoName)}» · выплаты ${fmt(u.metric)}</div></div></div><div style="display:flex;gap:6px"><button class="p" onclick="bAccept('${esc(u.nick)}')">Принять</button><button onclick="bDecline('${esc(u.nick)}')">✕</button></div></div>`).join(''):'<div class="sub">Заявок на бой нет</div>';
+    el.innerHTML=j.inbox.length?j.inbox.map(u=>`<div class="row"><div style="display:flex;align-items:center;gap:10px">${av(u.nick,u.av)}<div><b>${esc(u.nick)}</b><div class="sub">«${esc(u.casinoName)}» · ${fmt(u.inc)} 🪙/сек</div></div></div><div style="display:flex;gap:6px"><button class="acc" onclick="bAccept('${esc(u.nick)}')">Принять</button><button class="dec" onclick="bDecline('${esc(u.nick)}')">Отказать</button></div></div>`).join(''):'<div class="sub">Заявок на бой нет</div>';
   }catch(e){el.textContent=e.message}
 }
 async function bAccept(nick){
@@ -313,14 +341,14 @@ async function bAccept(nick){
     if(j.stale)m.innerHTML='<span class="bad">У соперника больше нет казика</span>';
     else{
       me.coins=j.coins;upCoins();
-      m.innerHTML=j.result==='win'?`<span class="ok">🏆 Победа! «${esc(j.you.name)}» (${fmt(j.you.metric)}) лучше «${esc(j.foe.name)}» (${fmt(j.foe.metric)}). +50 000 🪙</span>`
-        :j.result==='lose'?`<span class="bad">💀 Поражение. У «${esc(j.foe.name)}» выплаты ниже (${fmt(j.foe.metric)} против ${fmt(j.you.metric)}). ${fmt(j.delta)} 🪙</span>`:'Ничья!';
+      m.innerHTML=j.result==='win'?`<span class="ok">🏆 Победа! «${esc(j.you.name)}» (${fmt(j.you.inc)}/сек) лучше «${esc(j.foe.name)}» (${fmt(j.foe.inc)}/сек). +50 000 🪙</span>`
+        :j.result==='lose'?`<span class="bad">💀 Поражение. «${esc(j.foe.name)}» приносит больше (${fmt(j.foe.inc)} против ${fmt(j.you.inc)}). ${fmt(j.delta)} 🪙</span>`:'Ничья!';
     }
-    await refresh();renderMenu();loadInbox();
+    await refresh();renderMenu();updTabBadges();loadInbox();
   }catch(e){m.innerHTML='<span class="bad">'+esc(e.message)+'</span>'}
 }
 async function bDecline(nick){
-  try{await api('battle/decline',{nick});await refresh();renderMenu();loadInbox()}catch(e){toast(e.message)}
+  try{await api('battle/decline',{nick});await refresh();renderMenu();updTabBadges();loadInbox()}catch(e){toast(e.message)}
 }
 
 /* ---- слоты ---- */
@@ -329,7 +357,7 @@ const randGrid=()=>[0,1,2].map(()=>[0,1,2,3,4].map(rf));
 function tSlots(c,el){
   if(!grid)grid=randGrid();
   el.innerHTML=`<div class="box"><h3>Слоты «${esc(c.name)}»</h3>
-  <div class="sub">3 строки по 5 фруктов. 3 и больше одинаковых в строке дают выигрыш: ставка/3 × множитель × (количество−2), а потом умножается на «Возврат» казика (~${c.rtp}%).<br>${FR.map(f=>f[0]+' x'+f[1]).join(' · ')}</div>
+  <div class="sub">3 строки по 5 фруктов. 3 и больше одинаковых в строке дают выигрыш: ставка/3 × множитель × (количество−2).<br>${FR.map(f=>f[0]+' x'+f[1]).join(' · ')}</div>
   <div class="slots" id="grid"></div><div class="msg" id="smsg"></div>
   <div style="display:flex;gap:8px"><input id="bet" type="number" min="3" value="30"><button class="p" id="spin" onclick="spin('${c.id}')">Крутить</button></div></div>`;
   drawGrid();
@@ -356,19 +384,61 @@ async function spin(id){
 
 /* ---- настройки казика ---- */
 function tSet(c,el){
+  const own=c.owner===me.nick;
   el.innerHTML=`<div class="box"><h3>Настройки казика</h3>
   <div class="row"><div><b>Название</b><div class="sub">${esc(c.name)}</div></div></div>
   <div class="row"><div><b>Участники</b><div class="sub">${c.members.map(esc).join(', ')}</div></div></div>
-  ${c.team?`<div class="row" style="flex-direction:column;align-items:stretch"><b>Пригласить в команду</b><div style="display:flex;gap:8px;margin-top:6px"><input id="inv" placeholder="Ник игрока"><button class="p" onclick="invite()">Позвать</button></div><div class="msg" id="imsg" style="margin-top:6px"></div></div>`:''}
-  <div class="row"><div><b>Удалить казик</b><div class="sub">После этого можно создать новый</div></div><button class="d" onclick="delCas()">Удалить</button></div></div>`;
+  ${c.team&&own?`<div class="row" style="flex-direction:column;align-items:stretch"><b>Пригласить в команду</b><div style="display:flex;gap:8px;margin-top:6px"><input id="inv" placeholder="Ник игрока"><button class="p" onclick="invite()">Позвать</button></div><div class="msg" id="imsg" style="margin-top:6px"></div></div>`:''}
+  ${own?`<div class="row"><div><b>Удалить казик</b><div class="sub">После этого можно создать новый</div></div><button class="d" onclick="delCas()">Удалить</button></div>`
+       :`<div class="row"><div><b>Выйти из казика</b><div class="sub">Удалить казик может только создатель</div></div><button class="d" onclick="leaveCas()">Выйти</button></div>`}</div>`;
 }
 async function invite(){
-  try{await api('casino/invite',{nick:$('#inv').value});await refresh();renderMine()}
+  try{await api('team/invite',{nick:$('#inv').value});$('#imsg').innerHTML='<span class="ok">Приглашение отправлено ✔</span>';$('#inv').value=''}
   catch(e){$('#imsg').innerHTML='<span class="bad">'+esc(e.message)+'</span>'}
 }
 async function delCas(){
   if(!confirm('Точно удалить «'+myc.name+'»?'))return;
   try{await api('casino/delete',{});await refresh();tab='upgrade';viewId=null;render()}catch(e){toast(e.message)}
+}
+async function leaveCas(){
+  if(!confirm('Выйти из казика «'+myc.name+'»?'))return;
+  try{await api('casino/leave',{});await refresh();tab='upgrade';viewId=null;render()}catch(e){toast(e.message)}
+}
+
+/* ---- заявки в команду ---- */
+function tTeam(c,el){
+  el.innerHTML='<div class="box"><h3>Заявки в команду</h3><div id="tmbody" class="sub" style="margin-top:8px">Загрузка…</div></div>';
+  loadTeam('tmbody');
+}
+async function loadTeam(id){
+  const el=$('#'+id);if(!el)return;
+  try{
+    const j=await api('team/inbox');
+    let h='<div class="sub" style="margin:4px 0">Приглашения мне</div>';
+    h+=j.inv.length?j.inv.map(i=>`<div class="row"><div><b>${esc(i.name)}</b><div class="sub">от ${esc(i.from)} · участников: ${i.members}</div></div><div style="display:flex;gap:6px"><button class="acc" onclick="tmAccept('${esc(i.cid)}')">Принять</button><button class="dec" onclick="tmDecline('${esc(i.cid)}')">Отказать</button></div></div>`).join(''):'<div class="sub">Приглашений нет</div>';
+    if(j.owner){
+      h+='<div class="sub" style="margin:12px 0 4px">Заявки в мою команду</div>';
+      h+=j.reqs.length?j.reqs.map(r=>`<div class="row"><div style="display:flex;align-items:center;gap:10px">${av(r.nick,r.av)}<b>${esc(r.nick)}</b></div><div style="display:flex;gap:6px"><button class="acc" onclick="tmReq('reqaccept','${esc(r.nick)}')">Принять</button><button class="dec" onclick="tmReq('reqdecline','${esc(r.nick)}')">Отказать</button></div></div>`).join(''):'<div class="sub">Заявок нет</div>';
+    }
+    el.innerHTML=h;
+  }catch(e){el.textContent=e.message}
+}
+async function tmAfter(){await refresh();renderMenu();showCasino()}
+async function tmAccept(cid,force){
+  try{
+    const j=await api('team/accept',{cid,force:!!force});
+    if(j.warn){askYN(`Вы хотите удалить свой старый казик «${esc(j.old.name)}» и зайти в новый?`,()=>tmAccept(cid,true));return}
+    toast(j.stale?'Приглашения уже нет':'Ты в команде!');
+    tab='upgrade';await tmAfter();
+  }catch(e){toast(e.message)}
+}
+async function tmDecline(cid){try{await api('team/decline',{cid});await tmAfter()}catch(e){toast(e.message)}}
+async function tmReq(kind,nick){
+  try{const j=await api('team/'+kind,{nick});if(j.stale)toast('Заявки уже нет');await tmAfter()}catch(e){toast(e.message)}
+}
+function teamRequest(cid){
+  const send=async()=>{try{await api('team/request',{cid});toast('Заявка в команду отправлена');const m=$('#bmsg');if(m)m.innerHTML='<span class="ok">Заявка отправлена ✔</span>'}catch(e){toast(e.message)}};
+  if(myc)askYN(`Если заявку примут, ваш старый казик «${esc(myc.name)}» будет удалён. Подать заявку?`,send);else send();
 }
 
 /* ---- друзья ---- */
@@ -393,7 +463,7 @@ async function loadFriends(){
     const j=await api('friends');
     const nm=(u,btns)=>`<div class="row"><div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openProfile('${esc(u.nick)}')">${av(u.nick,u.av)}<b>${esc(u.nick)}</b></div><div style="display:flex;gap:6px">${btns}</div></div>`;
     let h='';
-    if(j.incoming.length)h+='<div class="box"><b>Заявки в друзья</b>'+j.incoming.map(u=>nm(u,`<button class="p" onclick="fAct('accept','${esc(u.nick)}')">Принять</button><button onclick="fAct('decline','${esc(u.nick)}')">✕</button>`)).join('')+'</div>';
+    if(j.incoming.length)h+='<div class="box"><b>Заявки в друзья</b>'+j.incoming.map(u=>nm(u,`<button class="acc" onclick="fAct('accept','${esc(u.nick)}')">Принять</button><button class="dec" onclick="fAct('decline','${esc(u.nick)}')">Отказать</button>`)).join('')+'</div>';
     if(j.outgoing.length)h+='<div class="box"><b>Мои заявки</b>'+j.outgoing.map(u=>nm(u,`<button onclick="fAct('cancel','${esc(u.nick)}')">Отменить</button>`)).join('')+'</div>';
     h+='<div class="box"><b>Мои друзья ('+j.friends.length+')</b>'+(j.friends.length?j.friends.map(u=>nm(u,'')).join(''):'<div class="sub" style="margin-top:6px">Пока никого. Найди человека в поиске выше.</div>')+'</div>';
     el.innerHTML=h;
@@ -418,7 +488,7 @@ async function openProfile(nick){
     let btns='';
     if(!p.me){
       if(p.friend)btns+=`<button onclick="fAct('remove','${esc(p.nick)}')">Удалить из друзей</button>`;
-      else if(p.incoming)btns+=`<button class="p" onclick="fAct('accept','${esc(p.nick)}')">Принять заявку</button><button onclick="fAct('decline','${esc(p.nick)}')">Отклонить</button>`;
+      else if(p.incoming)btns+=`<button class="acc" onclick="fAct('accept','${esc(p.nick)}')">Принять заявку</button><button class="dec" onclick="fAct('decline','${esc(p.nick)}')">Отказать</button>`;
       else if(p.outgoing)btns+=`<button onclick="fAct('cancel','${esc(p.nick)}')">Заявка отправлена · отменить</button>`;
       else btns+=`<button class="p" onclick="fAct('add','${esc(p.nick)}')">➕ Добавить в друзья</button>`;
       if(c&&myc)btns+=`<button class="p" onclick="battleReq('${esc(p.nick)}')">⚔️ Кинуть бой</button>`;
@@ -426,7 +496,7 @@ async function openProfile(nick){
     ct.innerHTML=`<button onclick="showFriends()" style="margin-bottom:12px">← К друзьям</button>
     <div class="box"><div style="display:flex;align-items:center;gap:16px">${av(p.nick,p.av,76)}<div><h2 style="margin:0">${esc(p.nick)}</h2><div class="sub">${p.me?'это ты':p.friend?'в друзьях':''}</div></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">${btns}</div></div>
-    <div class="box"><b>🎰 Казик</b>${c?`<div style="margin-top:8px"><b>«${esc(c.name)}»</b>${c.team?' (команда)':''}</div><span class="stat">Приносит: <b class="${c.earn>=0?'ok':'bad'}">${fmt(c.earn)} 🪙</b></span><span class="stat">Выплаты игрокам: ${fmt(c.metric)}</span><span class="stat">Уровень: ${c.level}</span>`:'<div class="sub" style="margin-top:6px">Казика нет</div>'}</div>
+    <div class="box"><b>🎰 Казик</b>${c?`<div style="margin-top:8px"><b>«${esc(c.name)}»</b>${c.team?' (команда)':''}</div><span class="stat">Приносит: <b class="ok">${fmt(c.inc)} 🪙/сек</b></span><span class="stat">Уровень: ${c.level}</span>`:'<div class="sub" style="margin-top:6px">Казика нет</div>'}</div>
     <div class="box"><b>🪖 Гараж (${p.tanks.length})</b><div style="margin-top:6px">${p.tanks.map(id=>`<span class="chip ${id===p.sel?'sel':''}">${esc(names[id]?names[id].n:id)}${id===p.sel?' ✔':''}</span>`).join('')}</div></div>
     <div class="msg" id="bmsg"></div>`;
   }catch(e){ct.innerHTML='<div class="empty">'+esc(e.message)+'</div>'}
@@ -435,7 +505,7 @@ async function openProfile(nick){
 /* ---- настройки аккаунта ---- */
 function openSettings(){
   if($('#modal'))return;
-  const m=document.createElement('div');m.id='modal';
+  const m=document.createElement('div');m.id='modal';m.className='ovl';
   m.onclick=e=>{if(e.target===m)closeSettings()};
   document.body.appendChild(m);
   document.addEventListener('paste',onPaste);
