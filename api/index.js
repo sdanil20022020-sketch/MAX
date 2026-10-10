@@ -11,8 +11,8 @@ function getPool(){
 }
 function seed(){
   const db={users:{},casinos:{},tokens:{}};
-  [['Золотой Дракон',9200],['Лаки Seven',7400],['Мини-Вегас',5100]].forEach(([name,metric],i)=>{
-    db.casinos['b'+i]={id:'b'+i,name,owner:'бот',members:[],bot:true,team:false,metric,lv:{}};
+  [['Золотой Дракон',3000],['Лаки Seven',1500],['Мини-Вегас',800]].forEach(([name,binc],i)=>{
+    db.casinos['b'+i]={id:'b'+i,name,owner:'бот',members:[],bot:true,team:false,binc,lv:{},v2:1,reqs:[]};
   });
   return db;
 }
@@ -24,33 +24,63 @@ async function init(){
   ready=true;
 }
 
-const UPS={a:{cost:30,red:100},b:{cost:60,red:150},c:{cost:120,red:300},d:{cost:250,red:600},e:{cost:500,red:1500}};
+const UP={cam:{b:100,c:1000},vip:{b:1000,c:15000},tip:{b:5000,c:80000},ad:{b:20000,c:400000}};
+const MAXL=30,MAXTAP=25,OFFCAP=259200;
 const FR=[{s:'🍋',v:2},{s:'🍒',v:3},{s:'🍇',v:4},{s:'🍉',v:5},{s:'🍊',v:6},{s:'⭐',v:10}];
 const CODE=/^print\(\s*["']?hello world["']?\s*\)$/i;
-const PR={baby:0,scout:150,fighter:400,heavy:900,sniper:1500,rapid:2500,rapier:4000,guard:6000,storm:9000,titan:15000,phantom:22000,howitzer:35000,destroyer:50000,legend:100000};
+const PR={baby:0,scout:25000,fighter:75000,heavy:200000,sniper:400000,rapid:500000,rapier:600000,guard:800000,storm:1000000,titan:1500000,phantom:2200000,howitzer:3500000,destroyer:5000000,legend:10000000};
 const WIN=50000,LOSE=10000,RENAME=50000;
 
 const err=(code,msg)=>{const e=new Error(msg);e.code=code;return e};
 const hash=(p,s)=>crypto.scryptSync(p,s,32).toString('hex');
 const level=c=>Object.values(c.lv||{}).reduce((a,b)=>a+b,0);
-const factor=c=>Math.max(.05,Math.min(.8,.4+c.metric/25000));
-const pub=c=>({id:c.id,name:c.name,owner:c.owner,team:c.team,bot:!!c.bot,metric:c.metric,earn:Math.round(c.earn||0),level:level(c),members:c.members,lv:c.lv,rtp:Math.round(1.17*factor(c)*100)});
-const userPub=u=>({nick:u.nick,coins:u.coins,tap:u.tap,tapLv:u.tapLv,auto:u.auto,autoLv:u.autoLv,av:u.avaV||0});
+const incOf=c=>c.bot?(c.binc||0):Object.keys(UP).reduce((s,k)=>s+UP[k].b*(Math.pow(2,(c.lv||{})[k]||0)-1),0);
+const pub=c=>({id:c.id,name:c.name,owner:c.owner,team:c.team,bot:!!c.bot,inc:incOf(c),level:level(c),members:c.members,lv:c.lv,reqn:(c.reqs||[]).length});
+const userPub=u=>({nick:u.nick,coins:Math.floor(u.coins),tap:u.tap,tapLv:u.tapLv,av:u.avaV||0});
 
 function handle(db,method,p,q,b,headers){
   const casinoOf=u=>Object.values(db.casinos).find(c=>!c.bot&&c.members.includes(u.nick));
-  const notify=(nick,t)=>{const x=db.users[nick.toLowerCase()];if(x){x.notes.push(t);if(x.notes.length>20)x.notes.shift()}};
-  const settle=u=>{
-    const now=Date.now(),s=Math.floor((now-u.last)/1000);
-    if(s>0){if(u.auto)u.coins+=Math.min(s,86400)*u.auto;u.last+=s*1000;if(s>86400)u.last=now}
-  };
+  const notify=(nick,t)=>{const x=db.users[nick.toLowerCase()];if(x){x.notes=x.notes||[];x.notes.push(t);if(x.notes.length>20)x.notes.shift()}};
   const ukey=x=>x.nick.toLowerCase();
   const findU=n=>db.users[String(n||'').trim().toLowerCase()];
   const brief=k=>{const x=db.users[k];return x?{nick:x.nick,av:x.avaV||0}:null};
-  const ensure=x=>{x.friends=x.friends||[];x.fin=x.fin||[];x.fout=x.fout||[];x.breq=x.breq||[]};
+  const ensure=x=>{
+    x.friends=x.friends||[];x.fin=x.fin||[];x.fout=x.fout||[];x.breq=x.breq||[];x.tinv=x.tinv||[];
+    if(!x.v2){x.auto=0;x.autoLv=0;x.v2=1}
+  };
   const rm=(a,k)=>a.filter(y=>y!==k);
+  const settle=x=>{
+    const now=Date.now();
+    if(!x.last)x.last=now;
+    const s=Math.floor((now-x.last)/1000);
+    if(s>0){
+      const c=casinoOf(x);
+      if(c&&!c.bot&&c.members.length)x.coins+=Math.min(s,OFFCAP)*(incOf(c)/c.members.length);
+      x.last=s>OFFCAP?now:x.last+s*1000;
+    }
+  };
+  const settleAll=c=>c.members.forEach(m=>{const x=db.users[m.toLowerCase()];if(x)settle(x)});
+  const leaveOld=x=>{
+    const c=casinoOf(x);if(!c)return;
+    settleAll(c);
+    if(c.owner===x.nick||c.members.length<=1){
+      c.members.forEach(m=>m!==x.nick&&notify(m,`Казик «${c.name}» удалён`));
+      delete db.casinos[c.id];
+    }else c.members=c.members.filter(m=>m!==x.nick);
+  };
+  const validInv=x=>{
+    x.tinv=x.tinv.filter(i=>{const c=db.casinos[i.cid];return c&&c.team&&!c.bot&&!c.members.includes(x.nick)});
+    return x.tinv;
+  };
 
-  // публичная аватарка (без входа)
+  for(const c of Object.values(db.casinos)){
+    if(!c.v2){
+      c.v2=1;c.lv={};delete c.metric;delete c.earn;
+      if(c.bot&&!c.binc)c.binc=({b0:3000,b1:1500,b2:800})[c.id]||1000;
+    }
+    if(!c.reqs)c.reqs=[];
+  }
+
   if(p==='/api/avatar'&&method==='GET'){
     const x=db.users[String(q.get('n')||'').toLowerCase()];
     if(!x||!x.avatar)throw err(404,'Нет аватарки');
@@ -64,7 +94,7 @@ function handle(db,method,p,q,b,headers){
     const k=nick.toLowerCase();let u=db.users[k];
     if(!u){
       const salt=crypto.randomBytes(8).toString('hex');
-      u=db.users[k]={nick,salt,hash:hash(pass,salt),coins:100,tap:10,tapLv:0,auto:0,autoLv:0,last:Date.now(),lastTap:0,lastBattle:0,notes:[]};
+      u=db.users[k]={nick,salt,hash:hash(pass,salt),coins:100,tap:10,tapLv:0,v2:1,last:Date.now(),lastTap:0,lastBattle:0,notes:[]};
     }else if(u.hash!==hash(pass,u.salt))throw err(403,'Неверный пароль');
     const keys=Object.keys(db.tokens);
     if(keys.length>3000)keys.slice(0,1000).forEach(x=>delete db.tokens[x]);
@@ -73,12 +103,13 @@ function handle(db,method,p,q,b,headers){
 
   const u=db.users[db.tokens[headers['x-token']]];
   if(!u)throw err(401,'Войди в аккаунт');
-  settle(u);ensure(u);
+  ensure(u);settle(u);
 
   if(p==='/api/me'){
     const c=casinoOf(u),notes=u.notes.splice(0),now=Date.now();
     u.breq=u.breq.filter(r=>now-r.t<86400000&&db.users[r.from]);
-    return{user:userPub(u),casino:c?pub(c):null,notes,badges:{fr:u.fin.length,br:u.breq.length}};
+    const own=!!(c&&c.team&&c.owner===u.nick);
+    return{user:userPub(u),casino:c?pub(c):null,notes,badges:{fr:u.fin.length,br:u.breq.length,tm:validInv(u).length+(own?c.reqs.length:0)}};
   }
 
   if(p==='/api/search'){
@@ -100,47 +131,133 @@ function handle(db,method,p,q,b,headers){
     const name=String(b.name||'').trim();
     if(!name||name.length>24)throw err(400,'Название: 1–24 символа');
     const id='c'+Date.now().toString(36)+crypto.randomBytes(2).toString('hex');
-    db.casinos[id]={id,name,owner:u.nick,members:[u.nick],team:!!b.team,metric:10000,lv:{},earn:0};
+    db.casinos[id]={id,name,owner:u.nick,members:[u.nick],team:!!b.team,lv:{},v2:1,reqs:[]};
     return{id};
   }
 
   if(p==='/api/casino/upgrade'){
     const c=casinoOf(u);if(!c)throw err(400,'Нет казика');
-    const d=UPS[b.k];if(!d)throw err(400,'Нет такого улучшения');
-    const n=c.lv[b.k]||0,cost=d.cost*2**n;
+    const d=UP[b.k];if(!d)throw err(400,'Нет такого улучшения');
+    settleAll(c);
+    const n=c.lv[b.k]||0;
+    if(n>=MAXL)throw err(400,'Максимальный уровень');
+    const cost=d.c*Math.pow(2,n);
     if(u.coins<cost)throw err(400,'Не хватает монет');
-    u.coins-=cost;c.metric-=d.red*2**n;c.lv[b.k]=n+1;return{ok:1};
+    u.coins-=cost;c.lv[b.k]=n+1;return{ok:1};
   }
 
   if(p==='/api/casino/delete'){
     const c=casinoOf(u);if(!c)throw err(400,'Нет казика');
+    if(c.owner!==u.nick)throw err(403,'Удалить казик может только создатель. Ты можешь выйти из него.');
     c.members.forEach(m=>m!==u.nick&&notify(m,`Казик «${c.name}» удалён`));
     delete db.casinos[c.id];return{ok:1};
   }
 
-  if(p==='/api/casino/invite'){
-    const c=casinoOf(u);if(!c||!c.team)throw err(400,'Это не командный казик');
-    const t=findU(b.nick);
-    if(!t)throw err(404,'Такого игрока нет');
-    if(casinoOf(t))throw err(400,'У игрока уже есть казик');
-    c.members.push(t.nick);notify(t.nick,`${u.nick} позвал(а) тебя в команду «${c.name}»`);return{ok:1};
+  if(p==='/api/casino/leave'){
+    const c=casinoOf(u);if(!c)throw err(400,'Нет казика');
+    if(c.owner===u.nick)throw err(400,'Создатель не может выйти, только удалить казик');
+    settleAll(c);
+    c.members=c.members.filter(m=>m!==u.nick);
+    notify(c.owner,`${u.nick} вышел(а) из команды «${c.name}»`);
+    return{ok:1};
   }
 
+  /* ---------- команды ---------- */
+  if(p==='/api/team/invite'){
+    const c=casinoOf(u);
+    if(!c||!c.team||c.owner!==u.nick)throw err(400,'Приглашать может только создатель командного казика');
+    const t=findU(b.nick);if(!t)throw err(404,'Такого игрока нет');
+    ensure(t);
+    if(c.members.includes(t.nick))throw err(400,'Игрок уже в команде');
+    if(t.tinv.some(i=>i.cid===c.id))throw err(400,'Приглашение уже отправлено');
+    if(t.tinv.length>=20)throw err(400,'У игрока слишком много приглашений');
+    t.tinv.push({cid:c.id,from:u.nick,t:Date.now()});
+    notify(t.nick,`${u.nick} приглашает тебя в команду «${c.name}»`);
+    return{ok:1};
+  }
+
+  if(p==='/api/team/inbox'){
+    const inv=validInv(u).map(i=>{const c=db.casinos[i.cid];return{cid:i.cid,name:c.name,from:i.from,members:c.members.length}});
+    const c=casinoOf(u),own=!!(c&&c.team&&c.owner===u.nick);
+    const reqs=own?c.reqs.filter(r=>db.users[r.nick.toLowerCase()]).map(r=>{const x=db.users[r.nick.toLowerCase()];return{nick:x.nick,av:x.avaV||0}}):[];
+    return{inv,owner:own,reqs};
+  }
+
+  if(p==='/api/team/accept'){
+    const i=u.tinv.find(x=>x.cid===b.cid);
+    if(!i)return{stale:1};
+    const c=db.casinos[b.cid];
+    if(!c||!c.team||c.bot){u.tinv=u.tinv.filter(x=>x!==i);return{stale:1}}
+    const old=casinoOf(u);
+    if(old&&old.id===c.id){u.tinv=u.tinv.filter(x=>x.cid!==c.id);return{ok:1}}
+    if(old&&!b.force)return{warn:1,old:{name:old.name,owner:old.owner===u.nick}};
+    if(c.members.length>=20)throw err(400,'В команде нет мест');
+    leaveOld(u);
+    settleAll(c);
+    c.members.push(u.nick);
+    u.tinv=u.tinv.filter(x=>x.cid!==c.id);
+    c.reqs=c.reqs.filter(r=>r.nick!==u.nick);
+    notify(c.owner,`${u.nick} вступил(а) в команду «${c.name}»`);
+    return{ok:1};
+  }
+
+  if(p==='/api/team/decline'){
+    u.tinv=u.tinv.filter(x=>x.cid!==b.cid);return{ok:1};
+  }
+
+  if(p==='/api/team/request'){
+    const c=db.casinos[b.cid];
+    if(!c||!c.team||c.bot)throw err(404,'Командный казик не найден');
+    if(c.members.includes(u.nick))throw err(400,'Ты уже в этой команде');
+    if(c.reqs.some(r=>r.nick===u.nick))throw err(400,'Заявка уже отправлена');
+    if(c.reqs.length>=30)throw err(400,'У команды слишком много заявок');
+    c.reqs.push({nick:u.nick,t:Date.now()});
+    notify(c.owner,`${u.nick} хочет вступить в команду «${c.name}»`);
+    return{ok:1};
+  }
+
+  if(p==='/api/team/reqaccept'||p==='/api/team/reqdecline'){
+    const c=casinoOf(u);
+    if(!c||!c.team||c.owner!==u.nick)throw err(400,'Нет прав');
+    const k=String(b.nick||'').trim().toLowerCase();
+    const r=c.reqs.find(x=>x.nick.toLowerCase()===k);
+    if(!r)return{stale:1};
+    c.reqs=c.reqs.filter(x=>x!==r);
+    if(p==='/api/team/reqdecline'){
+      notify(r.nick,`Заявка в команду «${c.name}» отклонена`);
+      return{ok:1};
+    }
+    const x=db.users[k];if(!x)return{stale:1};
+    if(c.members.length>=20)throw err(400,'В команде нет мест');
+    ensure(x);
+    const old=casinoOf(x);
+    if(old&&old.id!==c.id)leaveOld(x);
+    settleAll(c);
+    if(!c.members.includes(x.nick))c.members.push(x.nick);
+    x.tinv=x.tinv.filter(i=>i.cid!==c.id);
+    notify(x.nick,`Тебя приняли в команду «${c.name}»`);
+    return{ok:1};
+  }
+
+  /* ---------- хомяк ---------- */
   if(p==='/api/tap'){
     const now=Date.now();
     let n=Math.floor(+b.n)||0;
     n=Math.min(n,Math.max(1,Math.ceil((now-u.lastTap)/60)),100);
     if(n>0){u.coins+=n*u.tap;u.lastTap=now}
-    return{coins:u.coins};
+    return{coins:Math.floor(u.coins)};
   }
 
   if(p==='/api/hup'){
-    if(b.t==='tap'){const c=50*2**u.tapLv;if(u.coins<c)throw err(400,'Не хватает монет');u.coins-=c;u.tapLv++;u.tap+=5}
-    else if(b.t==='auto'){const c=100*2**u.autoLv;if(u.coins<c)throw err(400,'Не хватает монет');u.coins-=c;u.autoLv++;u.auto+=5}
-    else throw err(400,'?');
+    if(b.t!=='tap')throw err(400,'Нет такого улучшения');
+    if(u.tapLv>=MAXTAP)throw err(400,'Максимальный уровень');
+    const c=50*Math.pow(2,u.tapLv);
+    if(u.coins<c)throw err(400,'Не хватает монет');
+    u.coins-=c;u.tap+=5*Math.pow(2,u.tapLv);u.tapLv++;
     return{user:userPub(u)};
   }
 
+  /* ---------- слоты (выплата 100%) ---------- */
   if(p==='/api/slots'){
     const c=db.casinos[b.id];if(!c)throw err(404,'Казик не найден');
     const bet=Math.floor(+b.bet);
@@ -153,19 +270,9 @@ function handle(db,method,p,q,b,headers){
       const cnt={};row.forEach(f=>cnt[f.s]=(cnt[f.s]||0)+1);
       FR.forEach(f=>{if(cnt[f.s]>=3){sum+=bet/3*f.v*(cnt[f.s]-2);win[i]=f.s}});
     });
-    const total=Math.floor(sum*factor(c));
+    const total=Math.floor(sum);
     u.coins+=total;
-    const net=bet-total;
-    const mine=c.members.includes(u.nick);
-    if(!c.bot&&!mine)c.earn=(c.earn||0)+net;
-    if(net>0&&!c.bot){
-      const others=c.members.filter(m=>m!==u.nick);
-      if(others.length){
-        const each=Math.floor(net/others.length);
-        others.forEach((m,i)=>{const x=db.users[m.toLowerCase()];if(x)x.coins+=each+(i===0?net-each*others.length:0)});
-      }
-    }
-    return{grid:grid.map(r=>r.map(f=>f.s)),win,total,coins:u.coins};
+    return{grid:grid.map(r=>r.map(f=>f.s)),win,total,coins:Math.floor(u.coins)};
   }
 
   /* ---------- аватарка ---------- */
@@ -194,29 +301,28 @@ function handle(db,method,p,q,b,headers){
       for(const x of Object.values(db.users)){
         for(const f of['friends','fin','fout'])if(x[f])x[f]=x[f].map(k=>k===ok?nk:k);
         if(x.breq)x.breq.forEach(r=>{if(r.from===ok)r.from=nk});
+        if(x.tinv)x.tinv=x.tinv.map(i=>i.from===old?Object.assign({},i,{from:nick}):i);
       }
       for(const c of Object.values(db.casinos)){
         if(c.owner===old)c.owner=nick;
         c.members=c.members.map(m=>m===old?nick:m);
+        c.reqs=(c.reqs||[]).map(r=>r.nick===old?Object.assign({},r,{nick}):r);
       }
       if(db.rooms&&db.rooms[old]){db.rooms[nick]=db.rooms[old];db.rooms[nick].host=nick;delete db.rooms[old]}
     }
-    return{nick,coins:u.coins};
+    return{nick,coins:Math.floor(u.coins)};
   }
 
   if(p==='/api/account/delete'){
     if(u.hash!==hash(String(b.pass||''),u.salt))throw err(403,'Неверный пароль');
-    const k=ukey(u),nick=u.nick,c=casinoOf(u);
-    if(c){
-      if(c.owner===nick||c.members.length<=1){
-        c.members.forEach(m=>m!==nick&&notify(m,`Казик «${c.name}» удалён: владелец удалил аккаунт`));
-        delete db.casinos[c.id];
-      }else c.members=c.members.filter(m=>m!==nick);
-    }
+    const k=ukey(u),nick=u.nick;
+    leaveOld(u);
     for(const x of Object.values(db.users)){
       for(const f of['friends','fin','fout'])if(x[f])x[f]=x[f].filter(y=>y!==k);
       if(x.breq)x.breq=x.breq.filter(r=>r.from!==k);
+      if(x.tinv)x.tinv=x.tinv.filter(i=>i.from!==nick);
     }
+    for(const c of Object.values(db.casinos))c.reqs=(c.reqs||[]).filter(r=>r.nick!==nick);
     for(const t in db.tokens)if(db.tokens[t]===k)delete db.tokens[t];
     if(db.rooms)delete db.rooms[nick];
     delete db.users[k];
@@ -232,7 +338,7 @@ function handle(db,method,p,q,b,headers){
     const t=findU(b.nick);if(!t)throw err(404,'Игрок не найден');
     const k=ukey(t),c=casinoOf(t);
     return{nick:t.nick,av:t.avaV||0,tanks:t.tanks||['baby'],sel:t.tank||'baby',
-      casino:c?{id:c.id,name:c.name,metric:c.metric,earn:Math.round(c.earn||0),level:level(c),team:c.team}:null,
+      casino:c?{id:c.id,name:c.name,inc:incOf(c),level:level(c),team:c.team}:null,
       me:k===ukey(u),friend:u.friends.includes(k),incoming:u.fin.includes(k),outgoing:u.fout.includes(k)};
   }
 
@@ -279,7 +385,7 @@ function handle(db,method,p,q,b,headers){
     ensure(t);u.friends=rm(u.friends,ukey(t));t.friends=rm(t.friends,ukey(u));return{ok:1};
   }
 
-  /* ---------- бои казиков (по заявкам) ---------- */
+  /* ---------- бои казиков (выигрывает тот, кто приносит больше) ---------- */
   if(p==='/api/battle/search'){
     const s=String(q.get('q')||'').trim().toLowerCase();
     if(!s)return{users:[]};
@@ -287,7 +393,7 @@ function handle(db,method,p,q,b,headers){
     for(const x of Object.values(db.users)){
       if(x===u||!x.nick.toLowerCase().includes(s))continue;
       const c=casinoOf(x);if(!c)continue;
-      users.push({nick:x.nick,av:x.avaV||0,casinoName:c.name,metric:c.metric});
+      users.push({nick:x.nick,av:x.avaV||0,casinoName:c.name,inc:incOf(c)});
       if(users.length>=20)break;
     }
     return{users};
@@ -296,7 +402,7 @@ function handle(db,method,p,q,b,headers){
   if(p==='/api/battle/inbox'){
     const now=Date.now();
     u.breq=u.breq.filter(r=>now-r.t<86400000&&db.users[r.from]);
-    return{inbox:u.breq.map(r=>{const x=db.users[r.from],c=casinoOf(x);return{nick:x.nick,av:x.avaV||0,casinoName:c?c.name:'—',metric:c?c.metric:0}})};
+    return{inbox:u.breq.map(r=>{const x=db.users[r.from],c=casinoOf(x);return{nick:x.nick,av:x.avaV||0,casinoName:c?c.name:'—',inc:c?incOf(c):0}})};
   }
 
   if(p==='/api/battle/request'){
@@ -328,17 +434,17 @@ function handle(db,method,p,q,b,headers){
     u.breq=u.breq.filter(x=>x!==r);
     if(!t||!ac)return{stale:1};
     u.lastBattle=now;
-    const my=bc.metric,foe=ac.metric;
+    const my=incOf(bc),foe=incOf(ac);
     let result='draw',delta=0;
-    if(my<foe){
+    if(my>foe){
       result='win';u.coins+=WIN;delta=WIN;
-      const l=Math.min(LOSE,t.coins);t.coins-=l;
+      const l=Math.min(LOSE,Math.floor(t.coins));t.coins-=l;
       notify(t.nick,`Бой с ${u.nick}: ты проиграл(а), −${l} 🪙`);
-    }else if(my>foe){
-      result='lose';const l=Math.min(LOSE,u.coins);u.coins-=l;delta=-l;t.coins+=WIN;
+    }else if(my<foe){
+      result='lose';const l=Math.min(LOSE,Math.floor(u.coins));u.coins-=l;delta=-l;t.coins+=WIN;
       notify(t.nick,`Бой с ${u.nick}: ты победил(а), +${WIN} 🪙`);
     }else notify(t.nick,`Бой с ${u.nick}: ничья`);
-    return{result,delta,coins:u.coins,you:{name:bc.name,metric:my},foe:{name:ac.name,metric:foe}};
+    return{result,delta,coins:Math.floor(u.coins),you:{name:bc.name,inc:my},foe:{name:ac.name,inc:foe}};
   }
 
   /* ---------- танки ---------- */
@@ -347,14 +453,14 @@ function handle(db,method,p,q,b,headers){
     u.tanks=u.tanks||['baby'];u.tank=u.tank||'baby';
     const now=Date.now();
     for(const k in db.rooms)if(now-db.rooms[k].t>45000)delete db.rooms[k];
-    if(p==='/api/tank/garage')return{coins:u.coins,tanks:u.tanks,sel:u.tank};
+    if(p==='/api/tank/garage')return{coins:Math.floor(u.coins),tanks:u.tanks,sel:u.tank};
     if(p==='/api/tank/buy'){
       const id=String(b.id);
       if(!(id in PR))throw err(400,'Нет такого танка');
       if(u.tanks.includes(id))throw err(400,'Уже куплен');
       if(u.coins<PR[id])throw err(400,'Не хватает монет');
       u.coins-=PR[id];u.tanks.push(id);
-      return{coins:u.coins,tanks:u.tanks,sel:u.tank};
+      return{coins:Math.floor(u.coins),tanks:u.tanks,sel:u.tank};
     }
     if(p==='/api/tank/select'){
       const id=String(b.id);
@@ -376,17 +482,17 @@ function handle(db,method,p,q,b,headers){
       return{ok:!!(x&&(x.tanks||['baby']).includes(String(b.tank)))};
     }
     if(p==='/api/tank/result'){
-      if(now-(u.lastTankRes||0)<60000)return{delta:0,coins:u.coins,cool:1};
+      if(now-(u.lastTankRes||0)<60000)return{delta:0,coins:Math.floor(u.coins),cool:1};
       u.lastTankRes=now;
       const win=!!b.win,online=b.mode==='online';
       const kills=Math.max(0,Math.min(15,Math.floor(+b.kills)||0));
       let delta=0;
       if(online){
         if(win)delta=WIN;
-        else if((+b.played||0)>=20)delta=-Math.min(LOSE,u.coins);
+        else if((+b.played||0)>=20)delta=-Math.min(LOSE,Math.floor(u.coins));
       }else delta=kills*3+(win?500:0);
       u.coins+=delta;
-      return{delta,coins:u.coins};
+      return{delta,coins:Math.floor(u.coins)};
     }
   }
 
