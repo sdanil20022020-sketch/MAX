@@ -492,3 +492,362 @@
     });
     this.proj = keep;
   };
+  /* --- ввод от людей --- */
+  P.input = function (id, m) {
+    var p = this.byId(id); if (!p || p.bot || !p.alive) return;
+    if (this.r.phase === 'freeze') { p.yaw = +m.yaw || 0; p.pitch = clamp(+m.pitch || 0, -1.5, 1.5); return; } // в заморозке стоим на месте
+    var nx = +m.x, ny = +m.y, nz = +m.z;
+    if (isFinite(nx) && isFinite(ny) && isFinite(nz)) {
+      var d = Math.hypot(nx - p.x, nz - p.z);
+      if (d < 4) { p.x = clamp(nx, 0.5, this.map.w - 0.5); p.z = clamp(nz, 0.5, this.map.d - 0.5); p.y = clamp(ny, -1, 12); }
+      else { p.x += (nx - p.x) * 0.3; p.z += (nz - p.z) * 0.3; }
+    }
+    p.yaw = +m.yaw || 0; p.pitch = clamp(+m.pitch || 0, -1.5, 1.5); p.cr = m.cr ? 1 : 0;
+    if (m.wid && this.owns(p, m.wid)) p.wid = m.wid;
+    p.speed = +m.sp || 0;
+  };
+  P.humanFire = function (id, m) {
+    var p = this.byId(id); if (!p || !p.alive || this.r.phase === 'freeze' || this.r.phase === 'over') return;
+    var wid = m.wid; if (!this.owns(p, wid)) return;
+    var w = Wp[wid], now = this.time;
+    var gap = 60 / Math.max(30, w.rpm) * 0.7;
+    if (now - p.lastFire < gap && w.slot !== 4) return;
+    p.lastFire = now; p.wid = wid;
+    var eye = p.y + (p.cr ? EYE_C : EYE);
+    var d = [+m.dx, +m.dy, +m.dz]; if (!isFinite(d[0] + d[1] + d[2])) return;
+    if (w.slot === 3) { if (wid === 'bknife' && m.alt) { this.launch(p, 'bknife', p.x + d[0] * 0.5, eye, p.z + d[2] * 0.5, d[0], d[1], d[2]); } else this.melee(p, !!m.alt); return; }
+    if (w.slot === 4) {
+      if (p.inv.g.indexOf(wid) < 0) return;
+      p.inv.g.splice(p.inv.g.indexOf(wid), 1); this.throwNade(p, wid, p.x + d[0] * 0.5, eye, p.z + d[2] * 0.5, d[0], d[1], d[2]);
+      this.sendInv(p); return;
+    }
+    if (w.proj) { this.launch(p, wid, p.x + d[0] * 0.6, eye, p.z + d[2] * 0.6, d[0], d[1], d[2]); return; }
+    this.shoot(p, wid, p.x, eye, p.z, d[0], d[1], d[2]);
+  };
+  P.use = function (id, on) { var p = this.byId(id); if (p) { p.useOn = !!on; if (!on) p.useT = 0; } };
+  P.humanBuy = function (id, item) { var p = this.byId(id); if (p) this.buy(p, item); };
+
+  /* --- бомба: закладка и разминирование, подбор --- */
+  P.inSite = function (x, z) {
+    var s = this.map.sites;
+    for (var i = 0; i < s.length; i++) if (Math.hypot(x - s[i].x, z - s[i].z) < s[i].r) return s[i];
+    return null;
+  };
+  P.stepBomb = function (dt) {
+    var b = this.bomb, self = this;
+    if (this.o.mode !== 'bomb') return;
+    if (b.st === 'dropped') {
+      this.players.forEach(function (p) {
+        if (b.st === 'dropped' && p.alive && p.team === 'T' && Math.hypot(p.x - b.x, p.z - b.z) < 1.4 && Math.abs(p.y - b.y) < 1.5) {
+          p.inv.bomb = true; b.st = 'carried'; b.carrier = p.id; self.sendInv(p); self.emit({ t: 'bombpick', id: p.id });
+        }
+      });
+    }
+    this.players.forEach(function (p) {
+      if (!p.alive) return;
+      // закладка
+      if (p.team === 'T' && p.inv.bomb && b.st === 'carried') {
+        var site = self.inSite(p.x, p.z), spd = Math.hypot(p.vx || 0, p.vz || 0) + (p.bot ? 0 : (p.speed || 0));
+        if (p.useOn && site && spd < 1.6) {
+          p.useT += dt; b.plantP = p.useT;
+          if (p.useT >= PLANT_T) {
+            p.useT = 0; p.useOn = false; p.inv.bomb = false;
+            b.st = 'planted'; b.x = p.x; b.y = p.y; b.z = p.z; b.t = BOMB_T; b.site = site.n; b.planter = p.id; b.carrier = 0; b.plantP = 0;
+            p.plants++; p.money = Math.min(16000, p.money + 300); self.sendInv(p);
+            self.emit({ t: 'planted', id: p.id, site: site.n });
+          }
+        } else if (p.useT) { p.useT = 0; b.plantP = 0; }
+      }
+      // разминирование
+      if (p.team === 'CT' && b.st === 'planted') {
+        var near = Math.hypot(p.x - b.x, p.z - b.z) < 2.4, spd2 = p.bot ? Math.hypot(p.vx, p.vz) : (p.speed || 0);
+        if (p.useOn && near && spd2 < 1.6) {
+          if (b.defBy !== p.id) { b.defBy = p.id; b.defP = 0; }
+          b.defP += dt;
+          var need = p.kit ? DEFUSE_KIT_T : DEFUSE_T;
+          if (b.defP >= need) {
+            b.st = 'defused'; b.defP = 0; p.defuses++; p.money = Math.min(16000, p.money + 300); self.sendInv(p);
+            self.emit({ t: 'defused', id: p.id });
+            self.r.phase = 'live'; self.endRound('CT', 'Бомба обезврежена');
+          }
+        } else if (b.defBy === p.id) { b.defBy = 0; b.defP = 0; }
+      }
+    });
+    if (b.st === 'planted') {
+      b.t -= dt;
+      if (b.t <= 0) {
+        b.st = 'exploded'; b.t = 0;
+        this.emit({ t: 'boom', x: b.x, y: b.y + 0.3, z: b.z, r: 38, k: 'c4' });
+        this.players.forEach(function (p) {
+          if (!p.alive) return;
+          var d = Math.hypot(p.x - b.x, p.z - b.z);
+          if (d < 38) self.damage(p, self.byId(b.planter), 400 * (1 - d / 38), 'body', 'he');
+        });
+        if (this.r.phase === 'live') this.endRound('T', 'Бомба взорвалась');
+        else if (this.r.phase === 'end') {}
+      }
+    }
+  };
+
+  /* --- основной шаг --- */
+  P.tick = function (dt) {
+    if (!this.started) return;
+    this.time += dt;
+    var r = this.r, self = this;
+    this.smokes = this.smokes.filter(function (s) { s.t -= dt; return s.t > 0; });
+    if (r.phase === 'freeze') {
+      r.t -= dt;
+      this.players.forEach(function (p) { if (p.bot) self.botBuy(p, dt); });
+      if (r.t <= 0) { r.phase = 'live'; r.t = ROUND_T; this.emit({ t: 'live' }); }
+    } else if (r.phase === 'live') {
+      r.t -= dt; this.matchT += dt;
+      if (this.o.mode === 'dm') {
+        this.players.forEach(function (p) { if (!p.alive && (p.respawnT -= dt) <= 0) self.respawn(p); if (p.bot) self.botBuy(p, dt); });
+        var top = this.players.slice().sort(function (a, b) { return b.k - a.k; })[0];
+        if (r.t <= 0 || (top && top.k >= 30)) { r.phase = 'over'; this.over = true; this.emit({ t: 'over', w: top ? top.name : '', sc: [0, 0], stats: this.stats(), dm: 1 }); }
+      } else {
+        this.players.forEach(function (p) { if (p.bot) self.botBuy(p, dt); });
+        if (r.t <= 0 && this.bomb.st !== 'planted') { this.endRound('CT', 'Время вышло'); }
+      }
+    } else if (r.phase === 'end') {
+      r.t -= dt;
+      if (r.t <= 0) this.newRound(false);
+    }
+    if (r.phase === 'live' || r.phase === 'end') {
+      this.players.forEach(function (p) { if (p.bot && p.alive) self.botThink(p, dt); });
+      this.stepProj(dt);
+      this.stepBomb(dt);
+      if (r.phase === 'live') this.checkEnd();
+    }
+    this.players.forEach(function (p) { if (p.blind > 0) p.blind -= dt; });
+  };
+  P.respawn = function (p) {
+    var idx = Math.floor(Math.random() * 10), sp = this.spawnPoint(Math.random() < 0.5 ? 'T' : 'CT', idx);
+    p.x = sp[0]; p.z = sp[1]; p.y = 0; p.hp = 100; p.alive = true; p.armor = 0; p.vx = p.vz = p.vy = 0; p.og = true; p.yaw = sp[2];
+    this.defaultKit(p); p.money = 16000; if (p.bot) { p.ammo = {}; p.ai.path = null; this.botBuy(p, 99, true); }
+    this.sendInv(p); this.emit({ t: 'spawn', id: p.id });
+  };
+
+  /* ---------- снимок для клиентов ---------- */
+  P.snapshot = function () {
+    var r = this.r, b = this.bomb, ph = { lobby: 0, freeze: 0, live: 1, end: 2, over: 3 }[r.phase];
+    var self = this;
+    return {
+      t: 's', ph: ph, tm: Math.round(r.t * 10) / 10, sc: [r.wins.T, r.wins.CT], rn: r.n, win: r.winner, why: r.why,
+      b: [{ none: 0, carried: 1, dropped: 2, planted: 3, defused: 4, exploded: 5 }[b.st], Math.round(b.x * 10) / 10, Math.round(b.y * 10) / 10, Math.round(b.z * 10) / 10, Math.round(b.t * 10) / 10, Math.round((b.defP || 0) * 10) / 10, b.carrier, Math.round((b.plantP || 0) * 10) / 10],
+      p: this.players.map(function (p) {
+        return [p.id, Math.round(p.x * 100) / 100, Math.round(p.y * 100) / 100, Math.round(p.z * 100) / 100, Math.round(p.yaw * 100) / 100, Math.round(p.pitch * 100) / 100,
+          Math.max(0, Math.round(p.hp)), Math.round(p.armor), p.alive ? 1 : 0, p.cr, p.wid, p.money, p.k, p.d, p.team === 'T' ? 0 : 1, p.bot ? Math.round(Math.hypot(p.vx, p.vz) * 10) / 10 : Math.round((p.speed || 0) * 10) / 10];
+      }),
+      pr: this.proj.map(function (o) { return [o.id, o.kind, Math.round(o.x * 10) / 10, Math.round(o.y * 10) / 10, Math.round(o.z * 10) / 10]; })
+    };
+  };
+  P.drainEvents = function () { var e = this.events; this.events = []; return e; };
+
+  /* ======================= БОТЫ ======================= */
+  P.botBuy = function (p, dt, force) {
+    var ai = p.ai; if (!ai || ai.bought === this.r.n && !force) return;
+    ai.buyT -= dt; if (ai.buyT > 0 && !force) return;
+    ai.bought = this.r.n;
+    var self = this, team = p.team, list = this.allowedList(team), has = function (id) { return list.indexOf(id) >= 0; };
+    var tryBuy = function (id) { return has(id) || MXW.EQ[id] ? self.buy(p, id, true) : false; };
+    if (this.o.mode === 'dm') { // в DM боты берут любое доступное основное оружие
+      var prim = list.filter(function (id) { return Wp[id].slot === 1; });
+      if (prim.length) { var pick = prim[Math.floor(Math.random() * prim.length)]; self.buy(p, pick, true); }
+      this.pickBest(p); return;
+    }
+    if (!p.inv.p) {
+      var wants;
+      if (team === 'T') wants = ['awp', 'ak47', 'sg552', 'galil', 'g3sg1', 'm249', 'mac10', 'p90', 'ump45', 'mp5', 'xm1014', 'm3'];
+      else wants = ['awp', 'm4a1', 'aug', 'famas', 'sg550', 'm249', 'p90', 'mp5', 'ump45', 'tmp', 'xm1014', 'm3'];
+      wants = wants.concat(['blaser', 'stw25', 'm87t', 'mp5k4', 'scout']);
+      var order = Math.random() < 0.18 ? wants : wants.filter(function (id) { return id !== 'awp' && id !== 'm249' && id !== 'g3sg1'; });
+      var money = p.money;
+      for (var i = 0; i < order.length; i++) {
+        var id = order[i];
+        if (!has(id)) continue;
+        var reserve = money > 5000 ? 650 : 0;
+        if (Wp[id].price + reserve <= money) { if (self.buy(p, id, true)) break; }
+      }
+    }
+    if (!p.inv.p && p.money >= 650) { var ps = ['deagle', 'fiveseven', 'p228', 'elite'].filter(has); if (ps.length && Math.random() < 0.6) self.buy(p, ps[0], true); }
+    if (p.armor < 100 && p.money >= 1000) self.buy(p, 'kevhelm', true); else if (p.armor < 100 && p.money >= 650) self.buy(p, 'kevlar', true);
+    if (team === 'CT' && p.money >= 200 && !p.kit && this.o.mode === 'bomb') self.buy(p, 'defuse', true);
+    if (p.money >= 300 && has('he') && Math.random() < 0.5) self.buy(p, 'he', true);
+    this.pickBest(p);
+  };
+  P.botEye = function (p) { return p.y + (p.cr ? EYE_C : EYE); };
+  P.visible = function (a, b) { // видит ли a игрока b
+    var ox = a.x, oy = this.botEye(a), oz = a.z, tx = b.x, ty = b.y + (b.cr ? 1.0 : 1.3), tz = b.z;
+    var dx = tx - ox, dy = ty - oy, dz = tz - oz, d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (d < 0.01) return true;
+    dx /= d; dy /= d; dz /= d;
+    if (rayWorld(this.map, ox, oy, oz, dx, dy, dz, d) < d - 0.15) return false;
+    for (var i = 0; i < this.smokes.length; i++) { // дым закрывает обзор
+      var s = this.smokes[i], px = s.x - ox, py = s.y - oy, pz = s.z - oz, t = clamp(px * dx + py * dy + pz * dz, 0, d);
+      var qx = ox + dx * t - s.x, qy = oy + dy * t - s.y, qz = oz + dz * t - s.z;
+      if (qx * qx + qy * qy + qz * qz < 3.4 * 3.4) return false;
+    }
+    return true;
+  };
+  P.botGoal = function (p) {
+    var ai = p.ai, mode = this.o.mode, map = this.map, b = this.bomb;
+    if (mode === 'bomb') {
+      if (p.team === 'T') {
+        if (b.st === 'planted') { return { x: b.x + rnd(-4, 4), z: b.z + rnd(-4, 4), kind: 'guard' }; }
+        if (p.inv.bomb) { var s = map.sites[ai.site === 'B' && map.sites[1] ? 1 : 0]; if (!ai.site) { ai.site = Math.random() < 0.5 ? 'A' : 'B'; s = map.sites[ai.site === 'B' && map.sites[1] ? 1 : 0]; } return { x: s.x, z: s.z, kind: 'plant' }; }
+        if (b.st === 'dropped' && Math.random() < 0.5) return { x: b.x, z: b.z, kind: 'pick' };
+        if (!ai.site) ai.site = Math.random() < 0.5 ? 'A' : 'B';
+        var s2 = map.sites[ai.site === 'B' && map.sites[1] ? 1 : 0];
+        return { x: s2.x + rnd(-s2.r * 0.8, s2.r * 0.8), z: s2.z + rnd(-s2.r * 0.8, s2.r * 0.8), kind: 'site' };
+      }
+      if (b.st === 'planted') return { x: b.x, z: b.z, kind: 'defuse' };
+      if (!ai.site) ai.site = Math.random() < 0.5 ? 'A' : 'B';
+      var s3 = map.sites[ai.site === 'B' && map.sites[1] ? 1 : 0];
+      return { x: s3.x + rnd(-s3.r * 0.9, s3.r * 0.9), z: s3.z + rnd(-s3.r * 0.9, s3.r * 0.9), kind: 'hold' };
+    }
+    // бой на уничтожение / все против всех: идём к врагам
+    var foes = this.players.filter(function (q) { return q.alive && q !== p && (mode === 'dm' || q.team !== p.team); });
+    if (foes.length && Math.random() < 0.75) { var f = foes[Math.floor(Math.random() * foes.length)]; return { x: f.x + rnd(-5, 5), z: f.z + rnd(-5, 5), kind: 'hunt' }; }
+    return { x: rnd(4, map.w - 4), z: rnd(4, map.d - 4), kind: 'roam' };
+  };
+  P.botThink = function (p, dt) {
+    var ai = p.ai, D = DIFF[this.o.diff] || DIFF.mid, self = this;
+    if (!p.alive) return;
+    var w = Wp[p.wid] || Wp.knife;
+    if (this.r.phase === 'end' && this.o.mode !== 'dm') { stepMove(this.map, p, { mx: 0, mz: 0 }, dt); return; }
+    // --- восприятие ---
+    ai.scanT -= dt;
+    if (ai.scanT <= 0) {
+      ai.scanT = 0.18;
+      var best = null, bd = 1e9;
+      this.players.forEach(function (q) {
+        if (!q.alive || q === p || (self.o.mode !== 'dm' && q.team === p.team)) return;
+        var dx = q.x - p.x, dz = q.z - p.z, d = Math.hypot(dx, dz);
+        if (d > 70 || d >= bd) return;
+        var yawTo2 = yawTo(dx, dz), fov = Math.abs(angDiff(p.yaw, yawTo2));
+        var close = d < 9 || ai.tgt === q.id; // вплотную и уже замеченных видим вокруг
+        if (!close && fov > 1.15) return;
+        if (p.blind > 0.5) return;
+        if (self.visible(p, q)) { best = q; bd = d; }
+      });
+      if (best) { if (ai.tgt !== best.id) { ai.tgt = best.id; ai.react = D.react * rnd(0.8, 1.3); } ai.seen = 1.2; }
+      else if (ai.tgt) { ai.seen -= 0.18; if (ai.seen <= 0) { var lost = this.byId(ai.tgt); if (lost && lost.alive) ai.alert = { x: lost.x, z: lost.z, t: 4 }; ai.tgt = 0; } }
+    }
+    var tgt = ai.tgt ? this.byId(ai.tgt) : null;
+    if (tgt && !tgt.alive) { ai.tgt = 0; tgt = null; }
+    if (ai.alert) { ai.alert.t -= dt; if (ai.alert.t <= 0) ai.alert = null; }
+    // --- выбор оружия ---
+    if (tgt && p.inv.p && p.wid !== p.inv.p && !p.reloadT) p.wid = p.inv.p;
+    if (tgt && !p.inv.p && p.inv.s && p.wid !== p.inv.s) p.wid = p.inv.s;
+    if (!tgt && !p.inv.p && !p.inv.s) p.wid = p.inv.k;
+    w = Wp[p.wid] || Wp.knife;
+    // --- цель движения ---
+    var mx = 0, mz = 0, crouch = 0, walk = false;
+    ai.pathT -= dt;
+    var wantKind = ai.goal ? ai.goal.kind : '';
+    if (!ai.goal || ai.pathT <= 0 || (ai.goal.kind === 'defuse' && this.bomb.st !== 'planted') || (p.team === 'T' && this.bomb.st === 'planted' && ai.goal.kind !== 'guard' && this.o.mode === 'bomb') || (ai.goal.kind === 'plant' && !p.inv.bomb)) {
+      if (!ai.goal || ai.pathT <= 0 || ai.goal.kind !== wantKind || true) {
+        if (!ai.goal || Math.hypot(ai.goal.x - p.x, ai.goal.z - p.z) < 3 || ai.goal.kind === 'defuse' || ai.goal.kind === 'plant' || ai.pathT <= -5 || this.bomb.st === 'planted' && ai.goal.kind !== 'defuse' && ai.goal.kind !== 'guard') ai.goal = this.botGoal(p);
+        if (ai.alert && !tgt && this.o.mode !== 'dm' && ai.goal.kind !== 'plant' && ai.goal.kind !== 'defuse') ai.goal = { x: ai.alert.x, z: ai.alert.z, kind: 'alert' };
+        ai.path = MXM.path(this.nav, p.x, p.z, ai.goal.x, ai.goal.z); ai.pi = 0; ai.pathT = 1.2;
+      }
+    }
+    // --- движение ---
+    var moving = true, wp = null;
+    if (ai.goal && (ai.goal.kind === 'plant') && p.inv.bomb) {
+      var si = this.inSite(p.x, p.z); if (si) { moving = false; p.useOn = true; }
+    }
+    if (ai.goal && ai.goal.kind === 'defuse' && Math.hypot(p.x - this.bomb.x, p.z - this.bomb.z) < 2.0 && !(tgt && this.visible(p, tgt) && Math.hypot(tgt.x - p.x, tgt.z - p.z) < 25)) { moving = false; p.useOn = true; }
+    else if (ai.goal && ai.goal.kind !== 'plant') { if (p.useOn && !(ai.goal.kind === 'defuse')) p.useOn = false; }
+    if (ai.goal && (ai.goal.kind === 'hold' || ai.goal.kind === 'guard') && ai.path && ai.pi >= ai.path.length - 1 && Math.hypot(ai.goal.x - p.x, ai.goal.z - p.z) < 3) { moving = false; }
+    if (moving && ai.path && ai.pi < ai.path.length) {
+      wp = ai.path[ai.pi];
+      var dx = wp[0] - p.x, dz = wp[1] - p.z, dd = Math.hypot(dx, dz);
+      if (dd < 0.9) ai.pi++;
+      else { mx = dx / dd; mz = dz / dd; }
+    }
+    // stuck
+    ai.stuckT += dt;
+    if (ai.stuckT > 1) {
+      var mvd = Math.hypot(p.x - ai.lx, p.z - ai.lz); ai.lx = p.x; ai.lz = p.z; ai.stuckT = 0;
+      if (moving && mvd < 0.5 && mx * mx + mz * mz > 0) { ai.jump = 0.3; ai.sideT = 0.6; ai.side = Math.random() < 0.5 ? 1 : -1; ai.pathT = 0; }
+    }
+    var jump = false;
+    if (ai.jump > 0) { ai.jump -= dt; jump = true; }
+    if (ai.sideT > 0) { ai.sideT -= dt; var sx = -mz * ai.side, sz = mx * ai.side; mx = sx * 0.8 + mx * 0.2; mz = sz * 0.8 + mz * 0.2; }
+    // --- прицеливание и стрельба ---
+    var wantYaw, wantPitch;
+    var eye = this.botEye(p);
+    if (tgt) {
+      var tx = tgt.x, tz = tgt.z, ty = tgt.y + (tgt.cr ? 1.0 : 1.35) + (Math.random() < 0.0 ? 0.3 : 0);
+      var hd = Math.hypot(tx - p.x, tz - p.z);
+      if (w.scope || w.model === 'sniper') ty = tgt.y + 1.3;
+      wantYaw = yawTo(tx - p.x, tz - p.z); wantPitch = Math.atan2(ty - eye, hd);
+      // тактика: стрейф в перестрелке
+      if (moving || true) {
+        ai.strafeT -= dt;
+        if (ai.strafeT <= 0) { ai.strafeT = rnd(0.4, 1.3); ai.strafe = Math.random() < 0.5 ? 1 : -1; }
+        var f = [-Math.sin(wantYaw), -Math.cos(wantYaw)], rgt = [Math.cos(wantYaw), -Math.sin(wantYaw)];
+        var adv = (w.model === 'shotgun' ? 1 : (hd > 28 ? 0.5 : (w.model === 'sniper' ? 0 : 0.0)));
+        if (w.slot === 3) adv = 1;
+        mx = f[0] * adv + rgt[0] * ai.strafe * 0.9; mz = f[1] * adv + rgt[1] * ai.strafe * 0.9;
+        if (w.model === 'sniper') { mx *= 0.2; mz *= 0.2; }
+        walk = false;
+        if (hd > 18 && Math.random() < 0.02) ai.crouchT = 0.6;
+        if (ai.crouchT > 0) { ai.crouchT -= dt; crouch = 1; }
+      }
+    } else {
+      var lookYaw = p.yaw;
+      if (mx * mx + mz * mz > 0.01) lookYaw = yawTo(mx, mz);
+      else { ai.look += dt; lookYaw = p.yaw + Math.sin(ai.look * 0.8) * 0.02 + 0.01; }
+      wantYaw = lookYaw; wantPitch = 0;
+      if (ai.alert && moving === false) { wantYaw = yawTo(ai.alert.x - p.x, ai.alert.z - p.z); }
+    }
+    // поворот
+    var maxTurn = D.turn * dt * (tgt ? 1 : 0.6), dy = angDiff(p.yaw, wantYaw);
+    p.yaw += clamp(dy, -maxTurn, maxTurn);
+    p.pitch += clamp(wantPitch - p.pitch, -maxTurn * 0.8, maxTurn * 0.8);
+    // оружие: перезарядка
+    var am = p.ammo[p.wid];
+    if (p.reloadT > 0) { p.reloadT -= dt; if (p.reloadT <= 0 && am) { var need = w.mag - am.mag, take = Math.min(need, am.res); am.mag += take; am.res -= take; } }
+    if (am && am.mag <= 0 && am.res > 0 && p.reloadT <= 0 && w.mag > 0) { p.reloadT = w.rel; this.emit({ t: 'reload', id: p.id }); }
+    // огонь
+    p.fireCd -= dt;
+    if (tgt && p.blind <= 0.3 && this.r.phase === 'live') {
+      ai.react -= dt;
+      var ang = Math.abs(angDiff(p.yaw, wantYaw)) + Math.abs(p.pitch - wantPitch);
+      var hd2 = Math.hypot(tgt.x - p.x, tgt.z - p.z);
+      var tol = 0.05 + 0.5 / Math.max(6, hd2);
+      if (ai.react <= 0 && ang < tol * 3 && p.reloadT <= 0 && p.fireCd <= 0) {
+        if (w.slot === 3) { if (hd2 < 2.2) { this.melee(p, Math.random() < 0.4); p.fireCd = 0.6; } }
+        else if (am && am.mag > 0) {
+          if (ai.burstT > 0) { ai.burstT -= dt; }
+          else {
+            var move = Math.hypot(p.vx, p.vz), errDeg = D.err * (1 + hd2 / 28) * (1 + move / 6) + w.spread;
+            if (w.scope && !(w.model === 'sniper')) errDeg *= 1;
+            var er = errDeg * Math.PI / 180;
+            var dir = dirFromYaw(p.yaw + (Math.random() - 0.5) * 2 * er, p.pitch + (Math.random() - 0.5) * 2 * er);
+            am.mag--;
+            if (w.proj) this.launch(p, p.wid, p.x + dir[0] * 0.6, eye, p.z + dir[2] * 0.6, dir[0], dir[1], dir[2]);
+            else this.shoot(p, p.wid, p.x, eye, p.z, dir[0], dir[1], dir[2]);
+            p.fireCd = 60 / w.rpm * (w.auto === false ? 1.3 : 1) + (w.model === 'sniper' ? 0.4 : 0);
+            ai.burst = (ai.burst || 0) + 1;
+            var maxB = w.auto === false ? 1 : Math.round(rnd(D.burst[0], D.burst[1]));
+            if (ai.burst >= maxB) { ai.burst = 0; ai.burstT = D.hold * rnd(0.7, 1.4); }
+          }
+        } else if (am && am.mag <= 0 && am.res <= 0 && p.wid !== p.inv.k) { // кончились патроны — другое оружие или нож
+          var alt = p.wid === p.inv.p ? (p.inv.s && p.ammo[p.inv.s] && p.ammo[p.inv.s].mag > 0 ? p.inv.s : p.inv.k) : p.inv.k; p.wid = alt;
+        }
+      }
+    } else { ai.react = Math.max(ai.react, 0); }
+    // двигаемся
+    var l = Math.hypot(mx, mz); if (l > 1) { mx /= l; mz /= l; }
+    var run = tgt && w.model === 'sniper' ? 0.3 : 1;
+    stepMove(this.map, p, { mx: mx * run, mz: mz * run, jump: jump, crouch: crouch, walk: walk, wspd: w.spd || 1 }, dt);
+    p.speed = Math.hypot(p.vx, p.vz);
+  };
+
+  root.MXSIM = { Sim: Sim, stepMove: stepMove, dirFromYaw: dirFromYaw, rayWorld: rayWorld, rayBox: rayBox, angDiff: angDiff, yawTo: yawTo,
+    C: { EYE: EYE, EYE_C: EYE_C, H: H_STAND, HC: H_CROUCH, RAD: RAD, FREEZE: FREEZE, ROUND_T: ROUND_T, BUY_T: BUY_T, PLANT_T: PLANT_T }, DIFF: DIFF };
+})(typeof window !== 'undefined' ? window : global);
