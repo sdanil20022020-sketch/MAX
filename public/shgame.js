@@ -216,6 +216,7 @@
     };
     this._md = function (e) {
       if (self.dead || self.mobile) return;
+            if (e.target && e.target.closest && e.target.closest('.btn,.bi,.modal .panel')) return;
       if (!self.locked() && !self.buyOpen && !self.ended && self.cv) { self.resume(); return; }
       if (e.button === 0) { me.mouseL = true; me.clicked = true; } else if (e.button === 2) { me.mouseR = true; self.rightClick(); }
     };
