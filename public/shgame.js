@@ -441,7 +441,7 @@
     p = this.pl[id] = { id: id, name: r.n || ('Игрок ' + id), team: r.tm === 'CT' ? 1 : 0, bot: r.b, x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0, yaw: 0, pitch: 0, hp: 100, armor: 0, alive: false, cr: 0, wid: 'knife', money: 0, k: 0, d: 0, sp: 0, mesh: null, ph: 0, first: true, look: GFX.randLook() };
   };
   P.mkMesh = function (p) {
-    var h = GFX.humanoid(p.team, this.skin === 'camo'); p.mesh = h; this.scene.add(h.g);
+    var h = GFX.humanoid(p.team, this.skin === 'camo', p.look); p.mesh = h; this.scene.add(h.g);
     p.gunWid = null; p.lastTeam = p.team;
     if (p.team === this.me.teamIdx || this.opts.mode === 'dm') { }
     p.label = new T.Sprite(new T.SpriteMaterial({ map: GFX.labelTex(p.name, p.team === 0 ? '#ffb86b' : '#8ec5ff'), transparent: true, depthTest: false }));
