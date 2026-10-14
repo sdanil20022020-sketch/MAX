@@ -211,7 +211,7 @@
     };
     this._mm = function (e) {
       if (!self.locked() || self.dead) return;
-      var s = 0.0022 * (me.scope ? (me.scope === 1 ? 0.55 : 0.25) : 1) * (self.cfg.sens || 1);
+     var s = 0.0022 * (me.scope ? (me.scope === 1 ? 0.55 : 0.25) : 1) * (1 - 0.3 * (me.ads || 0)) * (self.cfg.sens || 1);
       me.yaw -= e.movementX * s; me.pitch = clamp(me.pitch - e.movementY * s, -1.45, 1.45);
     };
     this._md = function (e) {
