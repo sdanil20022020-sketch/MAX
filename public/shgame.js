@@ -438,8 +438,7 @@
     var p = this.pl[id];
     if (p) return p;
     var r = this.roster[id] || {};
-    p = this.pl[id] = { id: id, name: r.n || ('Игрок ' + id), team: r.tm === 'CT' ? 1 : 0, bot: r.b, x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0, yaw: 0, pitch: 0, hp: 100, armor: 0, alive: false, cr: 0, wid: 'knife', money: 0, k: 0, d: 0, sp: 0, mesh: null, ph: 0, first: true };
-    return p;
+    p = this.pl[id] = { id: id, name: r.n || ('Игрок ' + id), team: r.tm === 'CT' ? 1 : 0, bot: r.b, x: 0, y: 0, z: 0, tx: 0, ty: 0, tz: 0, yaw: 0, pitch: 0, hp: 100, armor: 0, alive: false, cr: 0, wid: 'knife', money: 0, k: 0, d: 0, sp: 0, mesh: null, ph: 0, first: true, look: GFX.randLook() };
   };
   P.mkMesh = function (p) {
     var h = GFX.humanoid(p.team, this.skin === 'camo'); p.mesh = h; this.scene.add(h.g);
