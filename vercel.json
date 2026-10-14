@@ -1,0 +1,7 @@
+{
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/mx", "destination": "/api/mx" },
+    { "source": "/api/:path*", "destination": "/api/index" }
+  ]
+}
