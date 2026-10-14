@@ -1,5 +1,7 @@
 {
   "name": "max-kazino",
   "private": true,
-  "dependencies": { "pg": "^8.11.0" }
+  "dependencies": {
+    "pg": "^8.11.0"
+  }
 }
