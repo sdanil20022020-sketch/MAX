@@ -333,7 +333,7 @@
     this.cfgSend({ t: 'fire', wid: me.wid, dx: d2[0], dy: d2[1], dz: d2[2] });
     // отдача
     me.spray = Math.min(14, me.spray + 1);
-    me.punchP += w.rec * 0.0105 * (1 + Math.min(me.spray, 10) * 0.07) * (me.scope ? 1.4 : 1);
+    me.punchP += w.rec * 0.0105 * (1 + Math.min(me.spray, 10) * 0.07) * (me.scope ? 1.4 : 1) * (1 - 0.3 * (me.ads || 0));
     me.punchY += (Math.random() - 0.5) * w.rec * 0.008;
     me.punchP = Math.min(me.punchP, 0.22);
     this.vmKick = 1; this.flashT = 0.045; this.flashMesh.visible = true; this.flashMesh.rotation.z = Math.random() * 3; this.shake += w.rec * 0.0015;
@@ -704,7 +704,10 @@
       var v = this.curVM, bob = Math.sin(me.bobT * 1.6) * Math.min(1, me.speed / 6) * 0.012, bobY = Math.abs(Math.cos(me.bobT * 1.6)) * Math.min(1, me.speed / 6) * 0.012;
       this.vmKick = Math.max(0, (this.vmKick || 0) - 0.12); this.vmStab = Math.max(0, (this.vmStab || 0) - 0.07);
       var drawK = me.draw > 0 ? me.draw / 0.4 : 0, relK = me.reload > 0 ? Math.sin(Math.PI * (1 - me.reload / me.reloadT)) : 0;
-      v.g.position.set(v.off[0] + bob, v.off[1] - bobY - drawK * 0.3 - relK * 0.14, v.off[2] + this.vmKick * 0.05 - this.vmStab * 0.12);
+       var ad = me.ads || 0, ADSY = { pistol: -0.062, smg: -0.07, rifle: -0.075, mg: -0.075, shotgun: -0.052 }[w.model];
+      var px = v.off[0] + bob, py = v.off[1] - bobY - drawK * 0.3 - relK * 0.14, pz = v.off[2] + this.vmKick * 0.05 - this.vmStab * 0.12;
+      if (ad > 0 && ADSY !== undefined) { px = px * (1 - ad); py = py * (1 - ad) + (ADSY - bobY * 0.2) * ad; pz += 0.04 * ad; }
+      v.g.position.set(px, py, pz);
       v.g.rotation.set(this.vmKick * 0.1 + relK * 0.5 + drawK * 0.6 - this.vmStab * 0.5, -relK * 0.2 + this.vmStab * 0.6, relK * 0.15);
     }
     this.ren.clear();
@@ -719,7 +722,7 @@
     // быстрые вещи каждый кадр
     var scopeOn = me.scope && me.alive && !this.ended; this.q('.scope').style.display = scopeOn ? 'block' : 'none';
     var cr = this.q('.cross'), gap = 4 + this.spread(w) * 4.2, L = 8;
-    cr.style.display = scopeOn || !me.alive || w.slot >= 3 && false ? 'none' : 'block';
+   cr.style.display = scopeOn || me.ads > 0.6 || !me.alive || w.slot >= 3 && false ? 'none' : 'block';
     var c = cr.children; c[0].style.cssText = 'left:-1px;top:' + (-gap - L) + 'px;width:2px;height:' + L + 'px'; c[1].style.cssText = 'left:-1px;top:' + gap + 'px;width:2px;height:' + L + 'px';
     c[2].style.cssText = 'top:-1px;left:' + (-gap - L) + 'px;height:2px;width:' + L + 'px'; c[3].style.cssText = 'top:-1px;left:' + gap + 'px;height:2px;width:' + L + 'px';
     // вспышки
