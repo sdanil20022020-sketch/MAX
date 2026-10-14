@@ -288,12 +288,14 @@
     if (w.scope) { me.scope = (me.scope + 1) % (w.scope + 1); GFX.snd('click', 0.5); }
     else if (w.slot === 3) me.altNow = true;
   };
+   P.adsOk = function (w) { return w.slot <= 2 && !w.scope && /^(pistol|smg|rifle|mg|shotgun)$/.test(w.model); };
   P.spread = function (w) {
     var me = this.me, sp = Math.hypot(me.vx, me.vz), s = w.spread + sp * 0.22 + me.spray * 0.14;
     if (!me.og) s += 3.5;
     if (me.cr && sp < 1) s *= 0.65;
     if (w.model === 'sniper' && !me.scope) s += 5;
-    if (me.scope && sp < 1) s *= 0.15;
+      if (me.scope && sp < 1) s *= 0.15;
+    if (me.ads) s *= 1 - 0.45 * me.ads;
     return s;
   };  P.tryFire = function (dt) {
     var me = this.me, w = W[me.wid], t = this.time;
@@ -606,6 +608,9 @@
   };
   P.update = function (dt) {
     var me = this.me, K = this.keys, w = W[me.wid] || W.knife;
+        // прицеливание по ПКМ (механический прицел) — для автоматов без оптики, пистолетов, ПП, дробовиков
+    var adsT = me.alive && !this.ended && me.mouseR && this.adsOk(w) && me.reload <= 0 && me.draw <= 0 && this.locked() ? 1 : 0;
+    me.ads = (me.ads || 0) + (adsT - (me.ads || 0)) * Math.min(1, dt * 14); if (me.ads < 0.01) me.ads = 0;
     // движение
     if (me.alive && !this.ended) {
       var fwd = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0), rgt = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0);
@@ -614,7 +619,7 @@
       var fx = -Math.sin(me.yaw), fz = -Math.cos(me.yaw), rx = Math.cos(me.yaw), rz = -Math.sin(me.yaw);
       var frozen = this.ph === 0 && this.opts.mode !== 'dm';
       if (frozen) { fwd = rgt = 0; }
-      var ws = (w.spd || 1) * (me.scope ? 0.6 : 1);
+      var ws = (w.spd || 1) * (me.scope ? 0.6 : 1) * (1 - 0.2 * (me.ads || 0));
       S.stepMove(this.map, me, { mx: fx * fwd + rx * rgt, mz: fz * fwd + rz * rgt, jump: !!(K.Space || this.jumpT), crouch: !!(K.ControlLeft || K.KeyC || this.crouchT), walk: !!K.ShiftLeft, wspd: ws }, dt);
       me.speed = Math.hypot(me.vx, me.vz);
       me.eyeH += ((me.cr ? S.C.EYE_C : S.C.EYE) - me.eyeH) * Math.min(1, dt * 14);
