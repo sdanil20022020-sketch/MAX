@@ -516,7 +516,7 @@ function settingsRender(){
   const m=$('#modal');if(!m)return;
   const a=accs();
   m.innerHTML=`<div class="mbox">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="margin:0">⚙️ Настройки</h2><button onclick="closeSettings()">✕</button></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="margin:0"><span style="cursor:pointer;padding:6px 10px 6px 0" onclick="window.MXDEV?MXDEV():toast('dev.js не загружен')">⚙️</span> Настройки</h2><button onclick="closeSettings()">✕</button></div>
   <div class="box"><b>Аватарка</b>
     <div style="display:flex;gap:14px;align-items:center;margin:10px 0">${av(me.nick,me.av,72)}
       <div style="display:flex;flex-direction:column;gap:6px">
