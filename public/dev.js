@@ -35,40 +35,45 @@
   /* ---------- клик по MAX ---------- */
   function vis(n) { return !!(n.offsetWidth || n.offsetHeight || (n.getClientRects && n.getClientRects().length)); }
   function settingsOpen() {
-    var all = document.body.querySelectorAll('h1,h2,h3,h4,div,span,b,p'), i, n, t;
+    var all = document.body.querySelectorAll('*'), i, n, t;
     for (i = 0; i < all.length; i++) {
       n = all[i];
-      if (n.children.length > 1) continue;
-      t = (n.textContent || '').replace(/[\u2699\uFE0F\u26ED]/g, '').trim();
+      if (n.children.length > 2 || /^(SCRIPT|STYLE)$/.test(n.tagName)) continue;
+      t = (n.textContent || '').replace(/[\u2699\uFE0F\u26ED\s]/g, '');
       if (/^(настройки|settings)$/i.test(t) && vis(n)) return true;
     }
     return false;
   }
-  function gearOf(el) {
-    for (var n = el, i = 0; n && n !== document.body && i < 4; n = n.parentElement, i++) {
+  function isGearEl(n) {
+    var tx = (n.textContent || '').replace(/\s+/g, '').trim();
+    var idc = ((n.id || '') + ' ' + (typeof n.className === 'string' ? n.className : (n.className && n.className.baseVal) || '') + ' ' + (n.getAttribute ? (n.getAttribute('title') || '') + (n.getAttribute('aria-label') || '') + (n.getAttribute('data-icon') || '') + (n.getAttribute('alt') || '') : '')).toLowerCase();
+    if (/^[\u2699\u26ED]\uFE0F?$/.test(tx)) return true;
+    if (/gear|cog|setting|настр|шестер/.test(idc) && tx.length < 3) return true;
+    return false;
+  }
+  function gearOf(e) {
+    var list = (document.elementsFromPoint ? document.elementsFromPoint(e.clientX, e.clientY) : [e.target]), i, n, k;
+    if (e.clientY > 200) return null;
+    for (i = 0; i < list.length; i++) {
+      n = list[i];
       if (n.closest && n.closest('.mx-ov')) return null;
-      var r = n.getBoundingClientRect();
-      if (r.top > 170) continue;
-      var tx = (n.textContent || '').replace(/\s+/g, '').trim();
-      var idc = ((n.id || '') + ' ' + (typeof n.className === 'string' ? n.className : (n.className && n.className.baseVal) || '') + ' ' + (n.title || '') + ' ' + (n.getAttribute && (n.getAttribute('aria-label') || '')) + ' ' + (n.alt || '') + ' ' + (n.getAttribute && (n.getAttribute('data-icon') || ''))).toLowerCase();
-      if (/^[\u2699\u26ED]\uFE0F?$/.test(tx)) return n;
-      if (/gear|cog|setting|настр|шестер/.test(idc) && tx.length < 3) return n;
+      for (k = 0; n && n !== document.body && k < 3; n = n.parentElement, k++) if (isGearEl(n)) return n;
     }
     return null;
   }
-  var taps = [], gtaps = [];
+  var taps = [], gtaps = [], lastG = null, lastT = 0;
   document.addEventListener('click', function (e) {
     try {
-      var g = gearOf(e.target), t = Date.now();
+      var g = gearOf(e), t = Date.now();
       if (g) {
-        /* capture-фаза: настройки уже были открыты до клика => это шестерёнка внутри настроек */
+        var inSet = settingsOpen();
+        var second = lastG && lastG !== g && (t - lastT) < 20000;
         gtaps.push(t);
         gtaps = gtaps.filter(function (x) { return t - x < 1600; });
-        if (settingsOpen()) { gtaps = []; askPass(); return; }
-        if (gtaps.length >= 3) { gtaps = []; askPass(); return; }
+        lastG = g; lastT = t;
+        if (inSet || second || gtaps.length >= 3) { gtaps = []; lastG = null; askPass(); }
         return;
       }
-      /* запасной способ: 5 быстрых нажатий в левый верхний угол экрана */
       if (e.clientX < 140 && e.clientY < 110 && !(e.target.closest && e.target.closest('.mx-ov'))) {
         taps.push(t);
         taps = taps.filter(function (x) { return t - x < 2500; });
@@ -174,3 +179,4 @@
 
   MX.devOpen = askPass;
 })();
+try{console.log('[dev.js] загружен');}catch(e){}
