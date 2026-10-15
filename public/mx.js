@@ -2,7 +2,7 @@
    Подключается в index.html одной строкой: <script src="/mx.js"></script> */
 (function () {
   if (window.MX) return;
-  var MX = window.MX = { token: '', ver: '6' };
+  var MX = window.MX = { token: '', ver: '7' };
 
   /* ---------- токен аккаунта: подсматриваем в запросах сайта ---------- */
   var of = window.fetch;
@@ -80,7 +80,48 @@
   /* ---------- стили ---------- */
   var css = document.createElement('style');
   css.textContent = [
-    '#menu{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important}#menu>[data-mx]{width:auto;max-width:none;flex:none}',
+    '@media(min-width:901px){#menu{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important}#menu>[data-mx]{width:auto;max-width:none;flex:none}}',
+    /* ---------- телефон ---------- */
+    'html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}button,.item,.chip,[data-mx]{touch-action:manipulation}',
+    '@media(max-width:900px){',
+    'input,select,textarea{font-size:16px!important;min-height:44px}',
+    'button{min-height:44px;padding:10px 14px}',
+    '#app{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto minmax(0,1fr)!important}',
+    '#side{max-height:none!important;overflow:visible!important;padding:10px 12px 8px!important;gap:8px!important;border-right:0!important;border-bottom:1px solid var(--line)}',
+    '#side .top{gap:8px}#side .logo{font-size:19px}#side .coins{font-size:14px;white-space:nowrap}',
+    '#side .gear{min-height:40px;min-width:40px;font-size:21px}',
+    '#side .h{display:none}#who{display:none!important}',
+    '#q{min-height:42px}',
+    '#results{max-height:34vh;overflow-y:auto}',
+    '#menu{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:8px!important;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}',
+    '#menu::-webkit-scrollbar{display:none}',
+    '#menu>.item,#menu>[data-mx]{flex:0 0 auto!important;width:auto!important;min-width:88px;max-width:150px;flex-direction:column!important;justify-content:center;text-align:center;gap:3px!important;padding:8px 6px!important;position:relative;min-height:66px}',
+    '#menu .ava{width:32px!important;height:32px!important;font-size:17px!important;margin:0 auto}',
+    '#menu .item b,#menu [data-mx] b{font-size:12px;line-height:1.15;display:block}',
+    '#menu .sub,#menu .mx-sub{display:none!important}',
+    '#menu .badge{position:absolute;top:3px;right:5px}',
+    '#menu>div>div:not(.ava){flex:none!important}',
+    '#content{padding:12px!important}',
+    '#panel{width:100%!important;max-width:100%!important;padding:14px!important}',
+    '.cas{gap:12px!important}',
+    '.cas .menu{flex-direction:row!important;overflow-x:auto;gap:8px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none}',
+    '.cas .menu::-webkit-scrollbar{display:none}',
+    '.cas .menu button{flex:0 0 auto;white-space:nowrap}',
+    '.photo{padding:12px!important}.photo .big{font-size:60px!important}',
+    '.row{flex-wrap:wrap}.row>button{flex:0 0 auto}',
+    '.box{padding:12px!important}',
+    '.cell{font-size:26px!important;padding:6px 0!important}.srow{gap:5px!important}.slots{padding:8px!important}',
+    '#ham{font-size:96px!important;padding:8px}',
+    '.mbox{width:100%!important;padding:14px!important;max-height:94vh}',
+    '.ovl{padding:8px!important}',
+    '#toasts{left:10px;right:10px;bottom:10px}.toast{max-width:none}',
+    '.mx-wrap{padding:10px!important}.mx-grid{grid-template-columns:1fr!important;gap:10px!important}',
+    '.mx-top{padding:10px 12px!important;gap:8px!important}.mx-top h2{font-size:16px!important}',
+    '.mx-b,.mx-x{min-height:44px;padding:10px 14px}.mx-in{font-size:16px!important;min-height:44px}',
+    '.mx-row{gap:8px}.mx-row .mx-b{flex:1 1 auto}',
+    '.mx-toast{bottom:16px;width:92vw;text-align:center}',
+    '}',
+    '@media(max-width:380px){#menu>.item,#menu>[data-mx]{min-width:78px}#side .logo{font-size:17px}}',
     '.mx-ov{position:fixed;inset:0;z-index:2147483000;pointer-events:auto;background:#0b0f17;color:#e8ecf4;font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-overflow-scrolling:touch}',
     '.mx-ov *{box-sizing:border-box}',
     '.mx-top{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:12px 16px;background:#111827;border-bottom:1px solid #1f2937}',
