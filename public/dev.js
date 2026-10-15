@@ -34,21 +34,39 @@
 
   /* ---------- клик по MAX ---------- */
   function isLogo(el) {
-    for (var n = el, i = 0; n && n !== document.body && i < 4; n = n.parentElement, i++) {
+    for (var n = el, i = 0; n && n !== document.body && i < 5; n = n.parentElement, i++) {
       if (n.closest && (n.closest('.mx-ov') || n.closest('.sg') || n.closest('[data-mx]'))) return false;
       var r = n.getBoundingClientRect();
-      if (r.top > 160) continue;
+      if (r.top > 220) continue;
       var idc = ((n.id || '') + ' ' + (typeof n.className === 'string' ? n.className : '')).toLowerCase();
+      if (/logo|brand|app-?icon|title|header|head|top/.test(idc) && /max/i.test(n.textContent || '')) return true;
       if (/logo|brand|app-?icon/.test(idc)) return true;
-      if (n.tagName === 'IMG' && /\bmax\b/i.test((n.alt || '') + ' ' + (n.title || ''))) return true;
+      if (/^(IMG|SVG|CANVAS)$/i.test(n.tagName) && /max|logo/i.test((n.alt || '') + ' ' + (n.title || '') + ' ' + (n.src || '') + ' ' + idc)) return true;
       var tx = (n.textContent || '').replace(/\s+/g, ' ').trim();
-      if (/^(MAX|Max)$/.test(tx)) return true;
+      if (tx.length <= 14 && /\bmax\b/i.test(tx)) return true;
     }
     return false;
   }
+  var taps = [];
   document.addEventListener('click', function (e) {
-    try { if (isLogo(e.target)) askPass(); } catch (x) {}
+    try {
+      if (isLogo(e.target)) { askPass(); return; }
+      /* запасной способ: 5 быстрых нажатий в левый верхний угол */
+      if (e.clientX < 140 && e.clientY < 110 && !(e.target.closest && e.target.closest('.mx-ov'))) {
+        var t = Date.now(); taps.push(t);
+        taps = taps.filter(function (x) { return t - x < 2500; });
+        if (taps.length >= 5) { taps = []; askPass(); }
+      }
+    } catch (x) {}
   }, true);
+  /* запасные способы: Ctrl+Alt+M, адрес с #dev, команда MXDEV() в консоли */
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey && e.altKey && (e.key === 'm' || e.key === 'M' || e.code === 'KeyM')) askPass();
+  });
+  window.MXDEV = askPass;
+  function hashCheck() { if (/dev/.test(location.hash)) { setTimeout(askPass, 600); } }
+  hashCheck();
+  window.addEventListener('hashchange', hashCheck);
 
   function askPass() {
     if (added) { openPanel(); return; }
