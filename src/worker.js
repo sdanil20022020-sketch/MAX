@@ -141,7 +141,10 @@ async function handle(db,method,p,q,b,headers,ctx){
     if(!u){
       const salt=rnd(8),hh=await pbk(pass,salt);
       u=db.users[k]={nick,salt,hash:hh,coins:100,tap:10,tapLv:0,v2:1,last:Date.now(),lastTap:0,lastBattle:0,notes:[]};
-    }else if(!(await verify(u,pass)))throw err(403,'Неверный пароль');
+    }else{
+      if(!(await verify(u,pass)))throw err(403,'Неверный пароль');
+      if(u.banned)throw err(403,'Аккаунт заблокирован');
+    }
     const keys=Object.keys(db.tokens);
     if(keys.length>3000)keys.slice(0,1000).forEach(x=>delete db.tokens[x]);
     const t=rnd(24);db.tokens[t]=k;return{token:t};
@@ -156,7 +159,60 @@ async function handle(db,method,p,q,b,headers,ctx){
 
   const u=db.users[db.tokens[headers['x-token']]];
   if(!u)throw err(401,'Войди в аккаунт');
+  if(u.banned)throw err(403,'Аккаунт заблокирован');
   ensure(u);settle(u);
+
+  /* ---------- панель разработчика ---------- */
+  if(p.startsWith('/api/dev/')){
+    if(p==='/api/dev/status')return{admin:!!u.admin};
+    if(p==='/api/dev/unlock'){
+      const now=Date.now();
+      if(u.devFailT&&now-u.devFailT>600000)u.devFails=0;
+      if((u.devFails||0)>=5)return{ok:0,msg:'Слишком много попыток, подожди 10 минут'};
+      if(String(b.pass||'')!==String(ctx.env.ADMIN_PASS||'9090')){u.devFails=(u.devFails||0)+1;u.devFailT=now;return{ok:0,msg:'Неверный пароль'}}
+      u.devFails=0;u.admin=true;return{ok:1,admin:true};
+    }
+    if(!u.admin)throw err(403,'Нет доступа');
+    if(p==='/api/dev/users'){
+      return{users:Object.values(db.users).map(x=>({nick:x.nick,coins:Math.floor(x.coins||0),banned:!!x.banned,admin:!!x.admin})).sort((a,c)=>c.coins-a.coins).slice(0,300),total:Object.keys(db.users).length};
+    }
+    if(p==='/api/dev/give'||p==='/api/dev/take'){
+      const x=findU(b.nick);if(!x)throw err(404,'Игрок не найден');
+      const amt=Math.floor(+b.amount);
+      if(!(amt>0)||amt>1e12)throw err(400,'Сумма: от 1 до 1 000 000 000 000');
+      x.coins=p==='/api/dev/give'?(x.coins||0)+amt:Math.max(0,(x.coins||0)-amt);
+      return{ok:1,nick:x.nick,coins:Math.floor(x.coins)};
+    }
+    if(p==='/api/dev/ban'){
+      const x=findU(b.nick);if(!x)throw err(404,'Игрок не найден');
+      if(x===u)throw err(400,'Себя банить нельзя');
+      if(b.on){
+        x.banned=true;
+        for(const t in db.tokens)if(db.tokens[t]===ukey(x))delete db.tokens[t];
+        if(db.rooms)delete db.rooms[x.nick];
+      }else delete x.banned;
+      return{ok:1,nick:x.nick,banned:!!x.banned};
+    }
+    if(p==='/api/dev/wipecoins'){
+      let n=0;for(const x of Object.values(db.users)){x.coins=0;n++}
+      return{ok:1,count:n};
+    }
+    if(p==='/api/dev/resetall'){
+      if(String(b.confirm||'')!=='СБРОС')throw err(400,'Нужно подтверждение');
+      let n=0;
+      for(const k of Object.keys(db.users)){
+        const x=db.users[k],f={nick:x.nick,salt:x.salt,hash:x.hash,coins:0,tap:10,tapLv:0,v2:1,last:Date.now(),lastTap:0,lastBattle:0,notes:[]};
+        if(x.admin)f.admin=true;
+        if(x.banned)f.banned=true;
+        db.users[k]=f;n++;
+      }
+      for(const id of Object.keys(db.casinos))if(!db.casinos[id].bot)delete db.casinos[id];
+      db.rooms={};
+      ctx.after.push(['delete from mx_state'],['delete from mx_avatars'],['delete from mx_rooms']);
+      return{ok:1,count:n};
+    }
+    throw err(404,'Не найдено');
+  }
 
   if(p==='/api/me'){
     const c=casinoOf(u),notes=u.notes.splice(0),now=Date.now();
@@ -298,7 +354,7 @@ async function handle(db,method,p,q,b,headers,ctx){
     let n=Math.floor(+b.n)||0;
     n=Math.min(n,Math.max(1,Math.ceil((now-u.lastTap)/60)),100);
     if(n>0){u.coins+=n*u.tap;u.lastTap=now}
-        return{coins:Math.floor(u.coins)};
+    return{coins:Math.floor(u.coins)};
   }
 
   if(p==='/api/hup'){
@@ -660,9 +716,9 @@ const LIGHT = ['state', 'rooms', 'room_save', 'room_del']; // этим дейс�
 
 async function lightUser(env, tok) {
   if (!tok) return null;
-  const r = (await sql(env, [["select data->'users'->(data->'tokens'->>$1::text)->>'nick', data->'users'->(data->'tokens'->>$1::text)->>'coins' from store where id=1", [tok]]]))[0].rows[0];
+  const r = (await sql(env, [["select data->'users'->(data->'tokens'->>$1::text)->>'nick', data->'users'->(data->'tokens'->>$1::text)->>'coins', data->'users'->(data->'tokens'->>$1::text)->>'banned' from store where id=1", [tok]]]))[0].rows[0];
   if (!r || !r[0]) return null;
-  return { nick: r[0], coins: Number(r[1]) || 0 };
+  return { nick: r[0], coins: Number(r[1]) || 0, banned: r[2] === 'true' };
 }
 
 async function mxAct(env, a, body, user, st, now, fl) {
@@ -852,6 +908,7 @@ async function mx(request, env, url) {
     if (light) user = await lightUser(env, tok);
     else { loaded = await loadDoc(env); user = loaded.doc.users[loaded.doc.tokens[tok]]; }
     if (!user || typeof user.coins !== 'number') return json(noAuth);
+    if (user.banned) return json({ err: 'Аккаунт заблокирован', auth: false });
     const now = Date.now(), uid = String(user.nick).toLowerCase();
     const sr = (await sql(env, [['select data::text from mx_state where name=$1', [uid]]]))[0].rows[0];
     const st = normSt(sr ? JSON.parse(sr[0]) : {}, now);
