@@ -2,7 +2,7 @@
    Подключается в index.html одной строкой: <script src="/mx.js"></script> */
 (function () {
   if (window.MX) return;
-  var MX = window.MX = { token: '', ver: '1' };
+  var MX = window.MX = { token: '', ver: '6' };
 
   /* ---------- токен аккаунта: подсматриваем в запросах сайта ---------- */
   var of = window.fetch;
@@ -71,7 +71,7 @@
       var els = document.querySelectorAll('body *');
       for (var i = 0; i < els.length; i++) {
         var e = els[i];
-        if (e.children.length === 0 && !e.closest('.mx-ov') && /^\s*🪙\s*[\d\s  .,]+\s*$/.test(e.textContent)) e.textContent = '🪙 ' + MX.fmt(n);
+        if (e.children.length === 0 && !e.closest('.mx-ov') && /^\s*🪙\s*[\d\s\u00a0\u202f.,]+\s*$/.test(e.textContent)) e.textContent = '🪙 ' + MX.fmt(n);
       }
     } catch (e) {}
     MX.coins = n;
@@ -80,7 +80,8 @@
   /* ---------- стили ---------- */
   var css = document.createElement('style');
   css.textContent = [
-    '.mx-ov{position:fixed;inset:0;z-index:9000;background:#0b0f17;color:#e8ecf4;font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-overflow-scrolling:touch}',
+    '#menu{display:flex!important;flex-direction:column!important;flex-wrap:nowrap!important}#menu>[data-mx]{width:auto;max-width:none;flex:none}',
+    '.mx-ov{position:fixed;inset:0;z-index:2147483000;pointer-events:auto;background:#0b0f17;color:#e8ecf4;font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:auto;-webkit-overflow-scrolling:touch}',
     '.mx-ov *{box-sizing:border-box}',
     '.mx-top{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:12px;padding:12px 16px;background:#111827;border-bottom:1px solid #1f2937}',
     '.mx-top h2{margin:0;font-size:18px;flex:1}',
@@ -98,7 +99,8 @@
     '.mx-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}',
     '.mx-bar{height:8px;background:#1f2937;border-radius:6px;overflow:hidden;margin:6px 0}',
     '.mx-bar i{display:block;height:100%;background:#22c55e}',
-    '.mx-toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#111827;color:#fff;border:1px solid #374151;padding:10px 16px;border-radius:12px;z-index:99999}',
+    '.mx-toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:#111827;color:#fff;border:1px solid #374151;padding:10px 16px;border-radius:12px;z-index:2147483600;max-width:92vw}',
+    '.sg{z-index:2147483300!important}',
     '.mx-big{font-size:34px;text-align:center;margin:6px 0;min-height:42px}',
     '.mx-q{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #1f2937;font-size:13px}',
     '.mx-sub{font-size:11px;opacity:.65;display:block;font-weight:400}'
@@ -122,20 +124,26 @@
 
   /* ---------- кнопки в меню (клонируем пункт «Друзья») ---------- */
   var items = [];
-  MX.addMenu = function (id, ico, label, sub, fn, first) { var it = { id: id, ico: ico, label: label, sub: sub, fn: fn }; if (first) items.unshift(it); else items.push(it); schedule(); };
+  MX.addMenu = function (id, ico, label, sub, fn, first, top) { var it = { id: id, ico: ico, label: label, sub: sub, fn: fn, top: top }; if (first) items.unshift(it); else items.push(it); schedule(); };
+  MX.removeMenu = function (id) { items = items.filter(function (i) { return i.id !== id; }); var e = document.querySelector('[data-mx="' + id + '"]'); if (e) e.remove(); };
 
   function findItem(text) {
-    var all = document.querySelectorAll('body *');
-    for (var i = 0; i < all.length; i++) {
-      var e = all[i];
-      if (e.closest('.mx-ov') || e.children.length) continue;
-      if (e.textContent.trim() !== text) continue;
-      var n = e;
-      while (n.parentElement && n.parentElement !== document.body) {
-        var p = n.parentElement;
-        if (p.children.length >= 2) {
-          var same = 0; for (var j = 0; j < p.children.length; j++) if (p.children[j].tagName === n.tagName) same++;
-          if (same >= 2) return n;
+    var tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null), nd;
+    while ((nd = tw.nextNode())) {
+      if (nd.nodeValue.trim() !== text) continue;
+      var leaf = nd.parentElement;
+      if (!leaf || leaf.closest('.mx-ov') || leaf.closest('.sg') || /^(SCRIPT|STYLE|OPTION)$/.test(leaf.tagName)) continue;
+      var n = leaf, up = 0;
+      while (n && n !== document.body && up++ < 7) {
+        var p = n.parentElement; if (!p) break;
+        if (p.children.length >= 3) {
+          var same = 0, txts = {};
+          for (var j = 0; j < p.children.length; j++) {
+            var c = p.children[j];
+            if (c.tagName === n.tagName && c.className === n.className) { same++; txts[c.textContent.trim()] = 1; }
+          }
+          var r = n.getBoundingClientRect();
+          if (same >= 3 && Object.keys(txts).length >= 3 && r.height >= 28) return n;
         }
         n = p;
       }
@@ -161,11 +169,16 @@
       else extra.push(l);
     });
     if (label) label.textContent = it.label;
+    else {
+      var tw2 = document.createTreeWalker(cl, NodeFilter.SHOW_TEXT, null), t2;
+      while ((t2 = tw2.nextNode())) if (t2.nodeValue.indexOf('Друзья') >= 0) { t2.nodeValue = t2.nodeValue.replace('Друзья', it.label); break; }
+    }
     if (icon) { if (icon.tagName === 'IMG') icon.replaceWith(document.createTextNode(it.ico)); else icon.textContent = it.ico; }
     else cl.insertBefore(document.createTextNode(it.ico + ' '), cl.firstChild);
     var subEl = extra.filter(function (l) { return !/^\d+$/.test(l.textContent.trim()); })[0];
     extra.forEach(function (l) { if (l !== subEl) l.remove(); });
     if (subEl) subEl.textContent = it.sub;
+    else if (it.sub && !label) { var sp = document.createElement('span'); sp.className = 'mx-sub'; sp.textContent = it.sub; cl.appendChild(sp); }
     else if (it.sub && label) {
       var d = document.createElement('div');
       d.className = 'mx-sub'; d.textContent = it.sub;
@@ -178,17 +191,36 @@
   function schedule() { if (pending) return; pending = true; requestAnimationFrame(function () { pending = false; ensure(); }); }
   function ensure() {
     if (!items.length) return;
-    var fr = findItem('Друзья');
-    if (!fr) return;
-    var par = fr.parentElement, prev = fr;
+    var fr = null, par = null, menu = document.getElementById('menu');
+    if (menu) {
+      for (var q = 0; q < menu.children.length; q++) {
+        var ch = menu.children[q];
+        if (!ch.hasAttribute('data-mx') && ch.textContent.indexOf('Друзья') >= 0) { fr = ch; break; }
+      }
+      if (fr) par = menu;
+    }
+    if (!fr) { fr = findItem('Друзья'); if (!fr) return; par = fr.parentElement; }
+    var prev = fr;
+    for (var z = 0; z < items.length; z++) { var e0 = par.querySelector('[data-mx="' + items[z].id + '"]'); if (e0 && e0.parentElement !== par) e0.remove(); }
     items.forEach(function (it) {
       var ex = par.querySelector('[data-mx="' + it.id + '"]');
       if (!ex) { ex = build(it, fr); }
+      if (it.top) { if (par.firstElementChild !== ex) par.insertBefore(ex, par.firstElementChild); return; }
       if (prev.nextSibling !== ex) par.insertBefore(ex, prev.nextSibling);
       prev = ex;
     });
   }
   new MutationObserver(function () { schedule(); }).observe(document.documentElement, { childList: true, subtree: true });
+  setInterval(schedule, 1500);
+  // ошибки наших файлов показываем на экране, чтобы было понятно, что сломалось
+  var lastErr = 0;
+  window.addEventListener('error', function (e) {
+    try {
+      if (!/\/(mx|earn|weapons|maps|shsim|shgfx|shgame|shooters|dev)\.js/.test(e.filename || '')) return;
+      if (Date.now() - lastErr < 1500) return; lastErr = Date.now();
+      MX.toast('Ошибка: ' + e.message + ' (' + String(e.filename).split('/').pop() + ':' + e.lineno + ')');
+    } catch (x) {}
+  });
 
   /* ---------- загрузка остальных файлов ---------- */
   function load(src, cb) {
@@ -203,7 +235,7 @@
       need(function () { return window.Peer; }, 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js', cb);
     });
   };
-  var files = ['/earn.js', '/weapons.js', '/maps.js', '/shsim.js'], files3d = ['/shgfx.js', '/shgame.js', '/shooters.js'];
+  var files = ['/earn.js', '/weapons.js', '/maps.js', '/shsim.js', '/dev.js'], files3d = ['/shgfx.js', '/shgame.js', '/shooters.js'];
   function seq(list, done) { (function next(i) { if (i < list.length) load(list[i] + '?v=' + MX.ver, function () { next(i + 1); }); else done && done(); })(0); }
   seq(files, function () {
     schedule();
