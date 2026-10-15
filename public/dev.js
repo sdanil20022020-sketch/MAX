@@ -34,16 +34,7 @@
 
   /* ---------- клик по MAX ---------- */
   function vis(n) { return !!(n.offsetWidth || n.offsetHeight || (n.getClientRects && n.getClientRects().length)); }
-  function settingsOpen() {
-    var all = document.body.querySelectorAll('*'), i, n, t;
-    for (i = 0; i < all.length; i++) {
-      n = all[i];
-      if (n.children.length > 2 || /^(SCRIPT|STYLE)$/.test(n.tagName)) continue;
-      t = (n.textContent || '').replace(/[\u2699\uFE0F\u26ED\s]/g, '');
-      if (/^(настройки|settings)$/i.test(t) && vis(n)) return true;
-    }
-    return false;
-  }
+  function settingsOpen() { return !!(document.getElementById('modal') && document.querySelector('#modal h2')); }
   function isGearEl(n) {
     var tx = (n.textContent || '').replace(/\s+/g, '').trim();
     var idc = ((n.id || '') + ' ' + (typeof n.className === 'string' ? n.className : (n.className && n.className.baseVal) || '') + ' ' + (n.getAttribute ? (n.getAttribute('title') || '') + (n.getAttribute('aria-label') || '') + (n.getAttribute('data-icon') || '') + (n.getAttribute('alt') || '') : '')).toLowerCase();
@@ -64,10 +55,12 @@
   var taps = [], gtaps = [], lastG = null, lastT = 0;
   document.addEventListener('click', function (e) {
     try {
+      var h2 = e.target.closest && e.target.closest('#modal h2');
+      if (h2 && e.clientX - h2.getBoundingClientRect().left < 36) { askPass(); return; }
       var g = gearOf(e), t = Date.now();
       if (g) {
         var inSet = settingsOpen();
-        var second = lastG && lastG !== g && (t - lastT) < 20000;
+        var second = false;
         gtaps.push(t);
         gtaps = gtaps.filter(function (x) { return t - x < 1600; });
         lastG = g; lastT = t;
