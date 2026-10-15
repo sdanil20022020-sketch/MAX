@@ -33,27 +33,44 @@
   setInterval(check, 3000); check();
 
   /* ---------- клик по MAX ---------- */
-  function isLogo(el) {
-    for (var n = el, i = 0; n && n !== document.body && i < 5; n = n.parentElement, i++) {
-      if (n.closest && (n.closest('.mx-ov') || n.closest('.sg') || n.closest('[data-mx]'))) return false;
-      var r = n.getBoundingClientRect();
-      if (r.top > 220) continue;
-      var idc = ((n.id || '') + ' ' + (typeof n.className === 'string' ? n.className : '')).toLowerCase();
-      if (/logo|brand|app-?icon|title|header|head|top/.test(idc) && /max/i.test(n.textContent || '')) return true;
-      if (/logo|brand|app-?icon/.test(idc)) return true;
-      if (/^(IMG|SVG|CANVAS)$/i.test(n.tagName) && /max|logo/i.test((n.alt || '') + ' ' + (n.title || '') + ' ' + (n.src || '') + ' ' + idc)) return true;
-      var tx = (n.textContent || '').replace(/\s+/g, ' ').trim();
-      if (tx.length <= 14 && /\bmax\b/i.test(tx)) return true;
+  function vis(n) { return !!(n.offsetWidth || n.offsetHeight || (n.getClientRects && n.getClientRects().length)); }
+  function settingsOpen() {
+    var all = document.body.querySelectorAll('h1,h2,h3,h4,div,span,b,p'), i, n, t;
+    for (i = 0; i < all.length; i++) {
+      n = all[i];
+      if (n.children.length > 1) continue;
+      t = (n.textContent || '').replace(/[\u2699\uFE0F\u26ED]/g, '').trim();
+      if (/^(настройки|settings)$/i.test(t) && vis(n)) return true;
     }
     return false;
   }
-  var taps = [];
+  function gearOf(el) {
+    for (var n = el, i = 0; n && n !== document.body && i < 4; n = n.parentElement, i++) {
+      if (n.closest && n.closest('.mx-ov')) return null;
+      var r = n.getBoundingClientRect();
+      if (r.top > 170) continue;
+      var tx = (n.textContent || '').replace(/\s+/g, '').trim();
+      var idc = ((n.id || '') + ' ' + (typeof n.className === 'string' ? n.className : (n.className && n.className.baseVal) || '') + ' ' + (n.title || '') + ' ' + (n.getAttribute && (n.getAttribute('aria-label') || '')) + ' ' + (n.alt || '') + ' ' + (n.getAttribute && (n.getAttribute('data-icon') || ''))).toLowerCase();
+      if (/^[\u2699\u26ED]\uFE0F?$/.test(tx)) return n;
+      if (/gear|cog|setting|настр|шестер/.test(idc) && tx.length < 3) return n;
+    }
+    return null;
+  }
+  var taps = [], gtaps = [];
   document.addEventListener('click', function (e) {
     try {
-      if (isLogo(e.target)) { askPass(); return; }
-      /* запасной способ: 5 быстрых нажатий в левый верхний угол */
+      var g = gearOf(e.target), t = Date.now();
+      if (g) {
+        /* capture-фаза: настройки уже были открыты до клика => это шестерёнка внутри настроек */
+        gtaps.push(t);
+        gtaps = gtaps.filter(function (x) { return t - x < 1600; });
+        if (settingsOpen()) { gtaps = []; askPass(); return; }
+        if (gtaps.length >= 3) { gtaps = []; askPass(); return; }
+        return;
+      }
+      /* запасной способ: 5 быстрых нажатий в левый верхний угол экрана */
       if (e.clientX < 140 && e.clientY < 110 && !(e.target.closest && e.target.closest('.mx-ov'))) {
-        var t = Date.now(); taps.push(t);
+        taps.push(t);
         taps = taps.filter(function (x) { return t - x < 2500; });
         if (taps.length >= 5) { taps = []; askPass(); }
       }
