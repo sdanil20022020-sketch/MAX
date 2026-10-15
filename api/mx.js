@@ -2,7 +2,7 @@
    Подключается в index.html одной строкой: <script src="/mx.js"></script> */
 (function () {
   if (window.MX) return;
-  var MX = window.MX = { token: '', ver: '2' };
+  var MX = window.MX = { token: '', ver: '5' };
 
   /* ---------- токен аккаунта: подсматриваем в запросах сайта ---------- */
   var of = window.fetch;
@@ -71,7 +71,7 @@
       var els = document.querySelectorAll('body *');
       for (var i = 0; i < els.length; i++) {
         var e = els[i];
-        if (e.children.length === 0 && !e.closest('.mx-ov') && /^\s*🪙\s*[\d\s  .,]+\s*$/.test(e.textContent)) e.textContent = '🪙 ' + MX.fmt(n);
+        if (e.children.length === 0 && !e.closest('.mx-ov') && /^\s*🪙\s*[\d\s\u00a0\u202f.,]+\s*$/.test(e.textContent)) e.textContent = '🪙 ' + MX.fmt(n);
       }
     } catch (e) {}
     MX.coins = n;
@@ -123,7 +123,8 @@
 
   /* ---------- кнопки в меню (клонируем пункт «Друзья») ---------- */
   var items = [];
-  MX.addMenu = function (id, ico, label, sub, fn, first) { var it = { id: id, ico: ico, label: label, sub: sub, fn: fn }; if (first) items.unshift(it); else items.push(it); schedule(); };
+  MX.addMenu = function (id, ico, label, sub, fn, first, top) { var it = { id: id, ico: ico, label: label, sub: sub, fn: fn, top: top }; if (first) items.unshift(it); else items.push(it); schedule(); };
+  MX.removeMenu = function (id) { items = items.filter(function (i) { return i.id !== id; }); var e = document.querySelector('[data-mx="' + id + '"]'); if (e) e.remove(); };
 
   function findItem(text) {
     var tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null), nd;
@@ -195,6 +196,7 @@
     items.forEach(function (it) {
       var ex = par.querySelector('[data-mx="' + it.id + '"]');
       if (!ex) { ex = build(it, fr); }
+      if (it.top) { if (par.firstElementChild !== ex) par.insertBefore(ex, par.firstElementChild); return; }
       if (prev.nextSibling !== ex) par.insertBefore(ex, prev.nextSibling);
       prev = ex;
     });
@@ -205,7 +207,7 @@
   var lastErr = 0;
   window.addEventListener('error', function (e) {
     try {
-      if (!/\/(mx|earn|weapons|maps|shsim|shgfx|shgame|shooters)\.js/.test(e.filename || '')) return;
+      if (!/\/(mx|earn|weapons|maps|shsim|shgfx|shgame|shooters|dev)\.js/.test(e.filename || '')) return;
       if (Date.now() - lastErr < 1500) return; lastErr = Date.now();
       MX.toast('Ошибка: ' + e.message + ' (' + String(e.filename).split('/').pop() + ':' + e.lineno + ')');
     } catch (x) {}
@@ -224,7 +226,7 @@
       need(function () { return window.Peer; }, 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js', cb);
     });
   };
-  var files = ['/earn.js', '/weapons.js', '/maps.js', '/shsim.js'], files3d = ['/shgfx.js', '/shgame.js', '/shooters.js'];
+  var files = ['/earn.js', '/weapons.js', '/maps.js', '/shsim.js', '/dev.js'], files3d = ['/shgfx.js', '/shgame.js', '/shooters.js'];
   function seq(list, done) { (function next(i) { if (i < list.length) load(list[i] + '?v=' + MX.ver, function () { next(i + 1); }); else done && done(); })(0); }
   seq(files, function () {
     schedule();
