@@ -91,7 +91,7 @@ const pub=c=>({id:c.id,name:c.name,owner:c.owner,team:c.team,bot:!!c.bot,inc:inc
 const userPub=u=>({nick:u.nick,coins:Math.floor(u.coins),tap:u.tap,tapLv:u.tapLv,av:u.avaV||0});
 
 async function handle(db,method,p,q,b,headers,ctx){
-  const casinoOf=u=>Object.values(db.casinos).find(c=>!c.bot&&c.members.includes(u.nick));
+  const casinoOf=u=>null; /* казики удалены */
   const notify=(nick,t)=>{const x=db.users[nick.toLowerCase()];if(x){x.notes=x.notes||[];x.notes.push(t);if(x.notes.length>20)x.notes.shift()}};
   const ukey=x=>x.nick.toLowerCase();
   const findU=n=>db.users[String(n||'').trim().toLowerCase()];
@@ -179,9 +179,32 @@ async function handle(db,method,p,q,b,headers,ctx){
     if(p==='/api/dev/give'||p==='/api/dev/take'){
       const x=findU(b.nick);if(!x)throw err(404,'Игрок не найден');
       const amt=Math.floor(+b.amount);
-      if(!(amt>0)||amt>1e12)throw err(400,'Сумма: от 1 до 1 000 000 000 000');
-      x.coins=p==='/api/dev/give'?(x.coins||0)+amt:Math.max(0,(x.coins||0)-amt);
+      if(!(amt>0)||!isFinite(amt))throw err(400,'Впиши сумму больше нуля');
+      const MAXC=1e300;
+      x.coins=p==='/api/dev/give'?Math.min(MAXC,(x.coins||0)+amt):Math.max(0,(x.coins||0)-amt);
       return{ok:1,nick:x.nick,coins:Math.floor(x.coins)};
+    }
+    if(p==='/api/dev/takeall'){
+      const x=findU(b.nick);if(!x)throw err(404,'Игрок не найден');
+      const was=Math.floor(x.coins||0);x.coins=0;
+      return{ok:1,nick:x.nick,was,coins:0};
+    }
+    if(p==='/api/dev/deleteuser'){
+      const x=findU(b.nick);if(!x)throw err(404,'Игрок не найден');
+      if(x===u)throw err(400,'Себя удалить нельзя');
+      const k=ukey(x),nick=x.nick;
+      for(const y of Object.values(db.users)){
+        for(const f of['friends','fin','fout'])if(y[f])y[f]=y[f].filter(z=>z!==k);
+        if(y.breq)y.breq=y.breq.filter(r=>r.from!==k);
+        if(y.tinv)y.tinv=y.tinv.filter(i=>i.from!==nick);
+      }
+      for(const c of Object.values(db.casinos)){c.reqs=(c.reqs||[]).filter(r=>r.nick!==nick);if(!c.bot)c.members=(c.members||[]).filter(m=>m!==nick)}
+      for(const id of Object.keys(db.casinos))if(!db.casinos[id].bot&&!db.casinos[id].members.length)delete db.casinos[id];
+      for(const t in db.tokens)if(db.tokens[t]===k)delete db.tokens[t];
+      if(db.rooms)delete db.rooms[nick];
+      delete db.users[k];
+      ctx.after.push(['delete from mx_avatars where k=$1',[k]],['delete from mx_state where name=$1',[k]]);
+      return{ok:1,nick};
     }
     if(p==='/api/dev/ban'){
       const x=findU(b.nick);if(!x)throw err(404,'Игрок не найден');
@@ -214,6 +237,8 @@ async function handle(db,method,p,q,b,headers,ctx){
     throw err(404,'Не найдено');
   }
 
+  if(/^\/api\/(casino|team|battle)\//.test(p))throw err(410,'Этот раздел удалён');
+
   if(p==='/api/me'){
     const c=casinoOf(u),notes=u.notes.splice(0),now=Date.now();
     u.breq=u.breq.filter(r=>now-r.t<86400000&&db.users[r.from]);
@@ -223,7 +248,7 @@ async function handle(db,method,p,q,b,headers,ctx){
 
   if(p==='/api/search'){
     const s=String(q.get('q')||'').trim().toLowerCase();
-    const casinos=Object.values(db.casinos).filter(c=>!s||c.name.toLowerCase().includes(s)).slice(0,30).map(pub);
+    const casinos=[];
     const users=s?Object.values(db.users).filter(x=>x.nick.toLowerCase().includes(s)).slice(0,20).map(x=>{
       const c=casinoOf(x);return{nick:x.nick,av:x.avaV||0,casinoId:c?c.id:null,casinoName:c?c.name:null};
     }):[];
@@ -368,7 +393,6 @@ async function handle(db,method,p,q,b,headers,ctx){
 
   /* ---------- слоты (выплата 100%) ---------- */
   if(p==='/api/slots'){
-    const c=db.casinos[b.id];if(!c)throw err(404,'Казик не найден');
     const bet=Math.floor(+b.bet);
     if(!(bet>=3))throw err(400,'Минимальная ставка 3');
     if(bet>u.coins)throw err(400,'Не хватает монет');
