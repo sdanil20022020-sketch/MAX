@@ -116,16 +116,18 @@
       '<div class="mx-grid">' +
       '<div class="mx-card"><h3>Игрок</h3><p>Выбери игрока из списка или впиши ник.</p>' +
       '<input class="mx-in dn" placeholder="Ник игрока" style="margin-bottom:8px">' +
-      '<input class="mx-in da" type="number" min="1" placeholder="Сумма монет" style="margin-bottom:10px">' +
+      '<input class="mx-in da" type="number" min="1" step="any" placeholder="Сумма монет (без ограничений)" style="margin-bottom:10px">' +
       '<div class="mx-row"><button class="mx-b g bg">➕ Выдать</button><button class="mx-b y bt">➖ Забрать</button></div>' +
-      '<div class="mx-row" style="margin-top:8px"><button class="mx-b r bb">🚫 Забанить</button><button class="mx-b bu">✅ Разбанить</button></div></div>' +
+      '<div class="mx-row" style="margin-top:8px"><button class="mx-b r bb">🚫 Забанить</button><button class="mx-b bu">✅ Разбанить</button></div>' +
+      '<div class="mx-row" style="margin-top:8px"><button class="mx-b y bx">💰 Забрать ВСЕ деньги игрока</button></div>' +
+      '<div class="mx-row" style="margin-top:8px"><button class="mx-b r bd">🗑 Удалить аккаунт игрока</button></div></div>' +
       '<div class="mx-card"><h3>Игроки <span class="cnt" style="opacity:.6;font-weight:400"></span></h3>' +
       '<div class="mx-row" style="margin-bottom:8px"><input class="mx-in ds" placeholder="Поиск по нику" style="flex:1"><button class="mx-b dr">⟳</button></div>' +
       '<div class="dl" style="max-height:340px;overflow:auto"></div></div>' +
       '<div class="mx-card" style="border-color:#7f1d1d"><h3>⚠ Опасная зона</h3><p>Нельзя отменить.</p>' +
       '<div class="mx-row"><button class="mx-b r bw">💸 Забрать деньги у всех</button></div>' +
       '<div class="mx-row" style="margin-top:8px"><button class="mx-b r bz">🧹 Обнулить все аккаунты</button></div>' +
-      '<p style="margin-top:8px">«Обнулить» стирает у всех монеты, прокачку, казино, танки, друзей, заработок и аватарки. Сами аккаунты (ник и пароль) остаются.</p></div>' +
+      '<p style="margin-top:8px">«Обнулить» стирает у всех монеты, прокачку, танки, друзей, заработок и аватарки. Сами аккаунты (ник и пароль) остаются.</p></div>' +
       '</div>';
     var q = function (s) { return w.querySelector(s); };
     var users = [];
@@ -160,6 +162,8 @@
     q('.bt').onclick = function () { var n = target(), a = n && amount(); if (n && a) act('/api/dev/take', { nick: n, amount: a }, function (j) { return j.nick + ': −' + MX.fmt(a) + ' (теперь ' + MX.fmt(j.coins) + ')'; }); };
     q('.bb').onclick = function () { var n = target(); if (n && confirm('Забанить ' + n + '?')) act('/api/dev/ban', { nick: n, on: 1 }, function (j) { return j.nick + ' забанен'; }); };
     q('.bu').onclick = function () { var n = target(); if (n) act('/api/dev/ban', { nick: n, on: 0 }, function (j) { return j.nick + ' разбанен'; }); };
+    q('.bx').onclick = function () { var n = target(); if (n && confirm('Забрать ВСЕ деньги у ' + n + '?')) act('/api/dev/takeall', { nick: n }, function (j) { return j.nick + ': забрано ' + MX.fmt(j.was) + ' (теперь 0)'; }); };
+    q('.bd').onclick = function () { var n = target(); if (n && confirm('Удалить аккаунт ' + n + ' НАВСЕГДА? Отменить нельзя.')) act('/api/dev/deleteuser', { nick: n }, function (j) { q('.dn').value = ''; return 'Аккаунт ' + j.nick + ' удалён'; }); };
     q('.bw').onclick = function () { if (confirm('Забрать монеты у ВСЕХ игроков?')) act('/api/dev/wipecoins', {}, function (j) { return 'Монеты обнулены у ' + j.count + ' игроков'; }); };
     q('.bz').onclick = function () {
       var v = prompt('Это обнулит ВСЕ аккаунты (ники и пароли останутся). Напиши слово СБРОС, чтобы подтвердить:');
