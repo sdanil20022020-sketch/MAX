@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAX</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Segoe UI,Roboto,Arial,sans-serif}
+:root{--bg:#0f1115;--panel:#181b22;--panel2:#1f232c;--line:#2a2f3a;--txt:#eef0f5;--mut:#8b93a5;--acc:#5b6cff;--acc2:#9b5bff;--ok:#2ecc71;--bad:#ff5a6a}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);overflow:hidden}
+button{cursor:pointer;border:0;border-radius:10px;padding:10px 14px;background:var(--panel2);color:var(--txt);font-size:14px;transition:.15s}
+button:hover{filter:brightness(1.2)}
+button.p{background:linear-gradient(135deg,var(--acc),var(--acc2));font-weight:600}
+button.d{background:var(--bad)}
+button.acc{background:#2ecc71;color:#06220f;font-weight:700}
+button.dec{background:#ff5a6a;color:#fff;font-weight:700}
+button:disabled{opacity:.4;cursor:not-allowed}
+input,select{width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);font-size:14px;outline:0}
+input:focus{border-color:var(--acc)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:1px}
+.ico{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center}
+.ico svg{width:22px;height:22px}
+#auth{height:100vh;display:grid;place-items:center;overflow:auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px;width:340px;display:flex;flex-direction:column;gap:12px}
+.card .logo{justify-content:center;margin-bottom:6px}
+.err{color:var(--bad);font-size:13px;min-height:16px}
+#app{display:none;height:100vh;height:100dvh;grid-template-columns:320px minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+#side{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px;gap:12px;overflow-y:auto;min-height:0}
+.top{display:flex;justify-content:space-between;align-items:center}
+.gear{padding:5px 9px;font-size:19px;background:transparent}
+.coins{background:var(--panel2);padding:6px 12px;border-radius:20px;font-weight:600;font-size:14px}
+.list{display:flex;flex-direction:column;gap:6px}
+.item{padding:12px;border-radius:12px;background:var(--panel2);cursor:pointer;display:flex;align-items:center;gap:10px}
+.item:hover{background:#272c38}
+.item.act{outline:2px solid var(--acc)}
+.item .ava,.ava0{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--acc2));display:grid;place-items:center;font-size:18px;flex:none;font-weight:700}
+.badge{background:var(--bad);color:#fff;border-radius:10px;min-width:20px;text-align:center;padding:2px 7px;font-size:12px;font-weight:700}
+.sub{color:var(--mut);font-size:12px}
+.h{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.8px;margin-top:4px}
+#main{display:flex;min-width:0;min-height:0;overflow:hidden}
+#content{flex:1;padding:22px;overflow-y:auto;min-width:0;min-height:0;-webkit-overflow-scrolling:touch}
+#panel{width:340px;background:var(--panel);border-left:1px solid var(--line);padding:20px;display:none;flex-direction:column;gap:12px;overflow-y:auto}
+.empty{height:100%;display:grid;place-items:center;color:var(--mut);text-align:center}
+.cas{display:grid;grid-template-columns:200px minmax(0,1fr);gap:18px}
+.menu{display:flex;flex-direction:column;gap:8px}
+.menu button{text-align:left}
+.menu button.on{background:linear-gradient(135deg,var(--acc),var(--acc2))}
+.photo{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;text-align:center;margin-bottom:16px}
+.photo .big{font-size:84px;line-height:1.1}
+.stat{display:inline-block;margin:6px 6px 0;padding:6px 12px;background:var(--panel2);border-radius:14px;font-size:13px}
+.chip{display:inline-block;padding:5px 10px;margin:4px 4px 0 0;background:var(--panel2);border-radius:12px;font-size:13px}
+.chip.sel{outline:2px solid var(--acc)}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border:0}
+#ham{font-size:110px;user-select:none;cursor:pointer;transition:transform .05s;display:inline-block}
+#ham:active{transform:scale(.88)}
+.slots{display:grid;gap:8px;background:#0b0d12;padding:14px;border-radius:14px;margin:12px 0}
+.srow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.cell{background:var(--panel2);border-radius:10px;text-align:center;font-size:34px;padding:8px 0}
+.cell.w{background:#2b5d3a;box-shadow:0 0 0 2px var(--ok)}
+.msg{min-height:22px;font-weight:600;margin-bottom:6px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+h2{margin-bottom:12px}
+#toasts{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:300}
+.toast{background:var(--panel2);border:1px solid var(--acc);padding:10px 14px;border-radius:12px;max-width:320px;font-size:14px}
+.ovl{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:150;display:grid;place-items:center;padding:16px}
+.mbox{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px;width:min(480px,100%);max-height:92vh;overflow:auto}
+@media(max-width:900px){
+  #app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  #side{max-height:42vh}
+  .cas{grid-template-columns:minmax(0,1fr)}
+  #panel{position:fixed;right:0;top:0;bottom:0;z-index:5;max-width:100%}
+}
+</style>
+</head>
+<body>
+
+<div id="auth">
+  <div class="card">
+    <div class="logo"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6l8 8 8-8v13"/></svg></div>MAX</div>
+    <div id="saved" class="list"></div>
+    <input id="nick" placeholder="Ник" maxlength="20">
+    <input id="pass" type="password" placeholder="Пароль" onkeydown="if(event.key==='Enter')login()">
+    <div class="err" id="aerr"></div>
+    <button class="p" onclick="login()">Создать аккаунт / Войти</button>
+    <div class="sub" style="text-align:center">Если ника ещё нет, он будет создан</div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="side">
+    <div class="top">
+      <div style="display:flex;align-items:center;gap:4px">
+        <div class="logo"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V6l8 8 8-8v13"/></svg></div>MAX</div>
+        <button class="gear" onclick="openSettings()" title="Настройки">⚙️</button>
+      </div>
+      <div class="coins" id="coins">🪙 0</div>
+    </div>
+    <input id="q" placeholder="🔍 Найти людей" oninput="searchDeb()">
+    <div class="list" id="results"></div>
+    <div class="h">Меню</div>
+    <div class="list" id="menu"></div>
+    <div id="who" style="margin-top:auto;display:flex;gap:10px;align-items:center;cursor:pointer" onclick="openSettings()"></div>
+  </div>
+  <div id="main"><div id="content"></div><div id="panel"></div></div>
+</div>
+<div id="toasts"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Math.round(n).toLocaleString('ru-RU');
+const UPS=[
+ {k:'cam',n:'Охрана и камеры',b:100,c:1000},
+ {k:'vip',n:'VIP-комнаты',b:1000,c:15000},
+ {k:'tip',n:'Чаевые казику',b:5000,c:80000},
+ {k:'ad',n:'Реклама казика',b:20000,c:400000}];
+const MAXL=30,MAXTAP=25;
+const FR=[['🍋',2],['🍒',3],['🍇',4],['🍉',5],['🍊',6],['⭐',10]];
+const STAGES=['🏚️','🏠','🏪','🏢','🏦','🏰','🏙️','🌆'];
+
+let token=localStorage.getItem('max_token'),me=null,myc=null,cur=null,tab='upgrade',tapBuf=0,spinning=false,grid=null,sdeb=null;
+let sect='casino',viewId=null,badges={fr:0,br:0,tm:0},btab='search',pnick=null,fdeb=null,bdeb=null;
+
+/* ---- аккаунты в браузере ---- */
+const accs=()=>{try{return JSON.parse(localStorage.getItem('max_accs')||'[]')}catch{return[]}};
+const saveAccs=a=>localStorage.setItem('max_accs',JSON.stringify(a));
+function addAcc(nick,t){
+  const a=accs().filter(x=>x.nick.toLowerCase()!==nick.toLowerCase()&&x.token!==t);
+  a.push({nick,token:t});saveAccs(a);
+}
+function authList(){
+  const a=accs(),el=$('#saved');
+  el.innerHTML=a.length?'<div class="sub">Сохранённые аккаунты</div>'+a.map((x,i)=>`<div class="item" style="padding:8px 10px" onclick="useAcc(${i})"><div class="ava0" style="width:30px;height:30px;font-size:13px">${esc(x.nick.charAt(0).toUpperCase())}</div><div style="flex:1"><b>${esc(x.nick)}</b></div><button onclick="event.stopPropagation();rmAcc(${i})" title="Убрать из списка">✕</button></div>`).join(''):'';
+}
+function useAcc(i){const a=accs()[i];if(!a)return;localStorage.setItem('max_token',a.token);location.reload()}
+function rmAcc(i){const a=accs();a.splice(i,1);saveAccs(a);authList();if($('#modal'))settingsRender()}
+
+async function api(p,body){
+  const r=await fetch('/api/'+p,{method:body?'POST':'GET',headers:{'content-type':'application/json','x-token':token||''},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401&&token){dropToken();return}
+  if(!r.ok)throw new Error(j.error||'Ошибка');
+  return j;
+}
+function dropToken(){saveAccs(accs().filter(a=>a.token!==token));localStorage.removeItem('max_token');location.reload()}
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),6000)}
+function upCoins(){$('#coins').textContent='🪙 '+fmt(me.coins)}
+function av(n,v,s){
+  s=s||38;
+  return v?`<img src="/api/avatar?n=${encodeURIComponent(n)}&v=${v}" alt="" style="width:${s}px;height:${s}px;border-radius:50%;object-fit:cover;flex:none">`
+    :`<div class="ava0" style="width:${s}px;height:${s}px;font-size:${Math.round(s*.45)}px">${esc((n||'?').charAt(0).toUpperCase())}</div>`;
+}
+function renderWho(){
+  $('#who').innerHTML=av(me.nick,me.av,34)+`<div><div style="font-weight:600">${esc(me.nick)}</div><div class="sub">⚙️ Настройки</div></div>`;
+}
+function askYN(text,yes){
+  const o=document.createElement('div');o.className='ovl';o.style.zIndex=250;
+  o.innerHTML=`<div class="mbox"><div style="font-size:16px;margin-bottom:16px">${text}</div><div style="display:flex;gap:10px"><button class="acc" style="flex:1" id="yy">Да</button><button class="dec" style="flex:1" id="nn">Нет</button></div></div>`;
+  document.body.appendChild(o);
+  o.querySelector('#nn').onclick=()=>o.remove();
+  o.querySelector('#yy').onclick=()=>{o.remove();yes()};
+}
+
+/* ---- вход ---- */
+async function login(){
+  try{
+    const j=await api('login',{nick:$('#nick').value,pass:$('#pass').value});
+    token=j.token;localStorage.setItem('max_token',token);boot();
+  }catch(e){$('#aerr').textContent=e.message}
+}
+async function boot(){
+  try{await refresh()}catch{return}
+  addAcc(me.nick,token);
+  $('#auth').style.display='none';$('#app').style.display='grid';
+  await render();
+  setInterval(poll,5000);
+  setInterval(flushTap,700);
+}
+async function refresh(){
+  const j=await api('me');
+  me=j.user;myc=null;badges=j.badges||{fr:0,br:0,tm:0};
+  j.notes.forEach(toast);
+  renderWho();upCoins();
+}
+async function poll(){
+  if(tapBuf>0||spinning)return;
+  try{await refresh();renderMenu()}catch{}
+}
+
+/* ---- меню / поиск ---- */
+function renderMenu(){
+  const it=(on,fn,ico,t,sub,b)=>`<div class="item ${on?'act':''}" onclick="${fn}"><div class="ava">${ico}</div><div style="flex:1"><b>${t}</b><div class="sub">${sub}</div></div>${b?`<span class="badge">${b}</span>`:''}</div>`;
+  $('#menu').innerHTML=
+    it(sect==='casino','showCasino()','🎰','Казино','слоты',0)+
+    it(sect==='ham','showHamster()','🐹','Хомяк','тапай и зарабатывай',0)+
+    it(sect==='tanks','openTanks()','🪖','Танки','магазин, гараж и бои',0)+
+    it(sect==='friends','showFriends()','🤝','Друзья','заявки и профили',badges.fr);
+}
+function updTabBadges(){}
+function openTanks(){sect='tanks';viewId=null;pnick=null;closePanel();renderMenu();if(window.TK_open)TK_open();else toast('Танки ещё загружаются')}
+function searchDeb(){clearTimeout(sdeb);sdeb=setTimeout(search,250)}
+async function search(){
+  const q=$('#q').value.trim(),r=$('#results');
+  if(!q){r.innerHTML='';return}
+  try{
+    const j=await api('search?q='+encodeURIComponent(q));
+    let h='';
+    j.users.forEach(u=>h+=`<div class="item" onclick="openProfile('${esc(u.nick)}')">${av(u.nick,u.av)}<div><b>${esc(u.nick)}</b><div class="sub">игрок</div></div></div>`);
+    r.innerHTML=h||'<div class="sub">Ничего не найдено</div>';
+  }catch(e){r.innerHTML='<div class="sub">'+esc(e.message)+'</div>'}
+}
+function closePanel(){$('#panel').style.display='none'}
+
+/* ---- казино (только слоты) ---- */
+async function render(){renderMenu();await showCasino()}
+async function showCasino(){
+  sect='casino';viewId=null;pnick=null;closePanel();renderMenu();
+  const ct=$('#content');
+  ct.innerHTML=`<div class="photo"><div class="big">🎰</div><h2>Казино</h2><span class="stat">Твои монеты: <b class="ok" id="cbal">${fmt(me.coins)} 🪙</b></span></div><div id="tabc"></div>`;
+  tSlots(null,$('#tabc'));
+}
+
+/* ---- хомяк ---- */
+async function showHamster(){
+  sect='ham';viewId=null;pnick=null;closePanel();renderMenu();
+  $('#content').innerHTML='<div class="photo"><div class="big">🐹</div><h2>Хомяк</h2></div><div id="tabc"></div>';
+  tHam(null,$('#tabc'));
+}
+function tHam(c,el){
+  const tc=50*Math.pow(2,me.tapLv),gain=5*Math.pow(2,me.tapLv),mx=me.tapLv>=MAXTAP;
+  el.innerHTML=`<div class="box" style="text-align:center"><div class="sub">Тапай хомяка!</div>
+    <div id="ham" onclick="tap()">🐹</div><div class="sub">+${fmt(me.tap)} за тап</div></div>
+    <div class="box"><div class="row"><div><b>Сильная лапка</b> <span class="sub">ур. ${me.tapLv}</span><div class="sub">${mx?'максимум':'+'+fmt(gain)+' монет за тап'}</div></div><button class="p" onclick="hUp()" ${mx?'disabled':''}>${mx?'MAX':'🪙 '+fmt(tc)}</button></div></div>`;
+}
+function tap(){me.coins+=me.tap;tapBuf++;upCoins()}
+async function flushTap(){
+  if(!tapBuf)return;const n=tapBuf;tapBuf=0;
+  try{const j=await api('tap',{n});me.coins=j.coins;upCoins()}catch{}
+}
+async function hUp(){
+  try{await flushTap();const j=await api('hup',{t:'tap'});Object.assign(me,j.user);upCoins();if(sect==='ham')tHam(null,$('#tabc'))}catch(e){toast(e.message)}
+}
+
+/* ---- слоты ---- */
+const rf=()=>FR[Math.floor(Math.random()*FR.length)][0];
+const randGrid=()=>[0,1,2].map(()=>[0,1,2,3,4].map(rf));
+function tSlots(c,el){
+  if(!grid)grid=randGrid();
+  el.innerHTML=`<div class="box"><h3>Слоты</h3>
+  <div class="sub">3 строки по 5 фруктов. 3 и больше одинаковых в строке дают выигрыш: ставка/3 × множитель × (количество−2).<br>${FR.map(f=>f[0]+' x'+f[1]).join(' · ')}</div>
+  <div class="slots" id="grid"></div><div class="msg" id="smsg"></div>
+  <div style="display:flex;gap:8px"><input id="bet" type="number" min="3" value="30"><button class="p" id="spin" onclick="spin()">Крутить</button></div></div>`;
+  drawGrid();
+}
+function drawGrid(win){
+  const g=$('#grid');if(!g)return;
+  g.innerHTML=grid.map((r,i)=>`<div class="srow">${r.map(f=>`<div class="cell ${win&&win[i]===f?'w':''}">${f}</div>`).join('')}</div>`).join('');
+}
+async function spin(){
+  if(spinning)return;
+  const bet=Math.floor(+$('#bet').value);
+  spinning=true;$('#spin').disabled=true;
+  await flushTap();
+  const iv=setInterval(()=>{grid=randGrid();drawGrid()},70);
+  let html;
+  try{
+    const [j]=await Promise.all([api('slots',{bet}),new Promise(r=>setTimeout(r,700))]);
+    clearInterval(iv);grid=j.grid;drawGrid(j.win);me.coins=j.coins;upCoins();
+    const cb=$('#cbal');if(cb)cb.textContent=fmt(me.coins)+' 🪙';
+    html=j.total>0?`<span class="ok">Выигрыш: +${fmt(j.total)} 🪙</span>`:'<span class="bad">Не повезло…</span>';
+  }catch(e){clearInterval(iv);html='<span class="bad">'+esc(e.message)+'</span>'}
+  const m=$('#smsg');if(m)m.innerHTML=html;
+  spinning=false;const b=$('#spin');if(b)b.disabled=false;
+}
+
+/* ---- друзья ---- */
+async function showFriends(){
+  sect='friends';viewId=null;pnick=null;closePanel();renderMenu();
+  $('#content').innerHTML='<h2>🤝 Друзья</h2><div class="box"><input id="fq" placeholder="🔍 Найти человека по нику" oninput="fSearchDeb()"><div id="fres" style="margin-top:8px"></div></div><div id="flists">Загрузка…</div>';
+  await loadFriends();
+}
+function fSearchDeb(){clearTimeout(fdeb);fdeb=setTimeout(fSearch,250)}
+async function fSearch(){
+  const q=$('#fq')?$('#fq').value.trim():'',el=$('#fres');if(!el)return;
+  if(!q){el.innerHTML='';return}
+  try{
+    const j=await api('search?q='+encodeURIComponent(q));
+    const us=j.users.filter(u=>u.nick!==me.nick);
+    el.innerHTML=us.length?us.map(u=>`<div class="row"><div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openProfile('${esc(u.nick)}')">${av(u.nick,u.av)}<b>${esc(u.nick)}</b></div><button class="p" onclick="fAct('add','${esc(u.nick)}')">➕ В друзья</button></div>`).join(''):'<div class="sub">Никого не нашли</div>';
+  }catch(e){el.textContent=e.message}
+}
+async function loadFriends(){
+  const el=$('#flists');if(!el)return;
+  try{
+    const j=await api('friends');
+    const nm=(u,btns)=>`<div class="row"><div style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="openProfile('${esc(u.nick)}')">${av(u.nick,u.av)}<b>${esc(u.nick)}</b></div><div style="display:flex;gap:6px">${btns}</div></div>`;
+    let h='';
+    if(j.incoming.length)h+='<div class="box"><b>Заявки в друзья</b>'+j.incoming.map(u=>nm(u,`<button class="acc" onclick="fAct('accept','${esc(u.nick)}')">Принять</button><button class="dec" onclick="fAct('decline','${esc(u.nick)}')">Отказать</button>`)).join('')+'</div>';
+    if(j.outgoing.length)h+='<div class="box"><b>Мои заявки</b>'+j.outgoing.map(u=>nm(u,`<button onclick="fAct('cancel','${esc(u.nick)}')">Отменить</button>`)).join('')+'</div>';
+    h+='<div class="box"><b>Мои друзья ('+j.friends.length+')</b>'+(j.friends.length?j.friends.map(u=>nm(u,'')).join(''):'<div class="sub" style="margin-top:6px">Пока никого. Найди человека в поиске выше.</div>')+'</div>';
+    el.innerHTML=h;
+  }catch(e){el.textContent=e.message}
+}
+async function fAct(kind,nick){
+  try{
+    if(kind==='remove'&&!confirm('Удалить '+nick+' из друзей?'))return;
+    const j=await api('friend/'+kind,{nick});
+    if(kind==='add')toast(j.status==='friends'?'Вы теперь друзья!':'Заявка отправлена');
+    await refresh();renderMenu();
+    if(pnick)openProfile(pnick);else showFriends();
+  }catch(e){toast(e.message)}
+}
+async function openProfile(nick){
+  sect='friends';viewId=null;pnick=nick;closePanel();renderMenu();
+  const ct=$('#content');ct.innerHTML='<div class="empty">Загрузка…</div>';
+  try{
+    const p=await api('friend/profile',{nick});
+    const names=window.TKINFO||{};
+    const c=p.casino;
+    let btns='';
+    if(!p.me){
+      if(p.friend)btns+=`<button onclick="fAct('remove','${esc(p.nick)}')">Удалить из друзей</button>`;
+      else if(p.incoming)btns+=`<button class="acc" onclick="fAct('accept','${esc(p.nick)}')">Принять заявку</button><button class="dec" onclick="fAct('decline','${esc(p.nick)}')">Отказать</button>`;
+      else if(p.outgoing)btns+=`<button onclick="fAct('cancel','${esc(p.nick)}')">Заявка отправлена · отменить</button>`;
+      else btns+=`<button class="p" onclick="fAct('add','${esc(p.nick)}')">➕ Добавить в друзья</button>`;
+    }
+    ct.innerHTML=`<button onclick="showFriends()" style="margin-bottom:12px">← К друзьям</button>
+    <div class="box"><div style="display:flex;align-items:center;gap:16px">${av(p.nick,p.av,76)}<div><h2 style="margin:0">${esc(p.nick)}</h2><div class="sub">${p.me?'это ты':p.friend?'в друзьях':''}</div></div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">${btns}</div></div>
+    <div class="box"><b>🪖 Гараж (${p.tanks.length})</b><div style="margin-top:6px">${p.tanks.map(id=>`<span class="chip ${id===p.sel?'sel':''}">${esc(names[id]?names[id].n:id)}${id===p.sel?' ✔':''}</span>`).join('')}</div></div>
+    <div class="msg" id="bmsg"></div>`;
+  }catch(e){ct.innerHTML='<div class="empty">'+esc(e.message)+'</div>'}
+}
+
+/* ---- настройки аккаунта ---- */
+function openSettings(){
+  if($('#modal'))return;
+  const m=document.createElement('div');m.id='modal';m.className='ovl';
+  m.onclick=e=>{if(e.target===m)closeSettings()};
+  document.body.appendChild(m);
+  document.addEventListener('paste',onPaste);
+  settingsRender();
+}
+function closeSettings(){const m=$('#modal');if(m)m.remove();document.removeEventListener('paste',onPaste)}
+function settingsRender(){
+  const m=$('#modal');if(!m)return;
+  const a=accs();
+  m.innerHTML=`<div class="mbox">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="margin:0">⚙️ Настройки</h2><button onclick="closeSettings()">✕</button></div>
+  <div class="box"><b>Аватарка</b>
+    <div style="display:flex;gap:14px;align-items:center;margin:10px 0">${av(me.nick,me.av,72)}
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="p" onclick="$('#afile').click()">📁 Выбрать файл</button>
+        <button onclick="pasteAva()">📋 Вставить из буфера</button>
+        ${me.av?'<button onclick="rmAva()">🗑 Убрать</button>':''}
+      </div></div>
+    <input id="afile" type="file" accept="image/*" style="display:none" onchange="pickFile(this.files[0]);this.value=''">
+    <div class="sub">JPG, PNG, WEBP, GIF и другие. Можно просто нажать Ctrl+V в этом окне. Чтобы поменять, выбери или вставь новую.</div></div>
+  <div class="box"><b>Сменить ник</b><div class="sub" style="margin:4px 0 8px">Стоит 50 000 🪙 (сейчас у тебя ${fmt(me.coins)})</div>
+    <div style="display:flex;gap:8px"><input id="newnick" placeholder="Новый ник" maxlength="20"><button class="p" onclick="doRename()">Сменить</button></div></div>
+  <div class="box"><b>Аккаунты</b>
+    ${a.map((x,i)=>`<div class="row"><div><b>${esc(x.nick)}</b>${x.token===token?' <span class="ok">· текущий</span>':''}</div><div style="display:flex;gap:6px">${x.token===token?'':`<button class="p" onclick="useAcc(${i})">Войти</button><button onclick="rmAcc(${i})" title="Убрать из списка">✕</button>`}</div></div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button onclick="addOther()">➕ Добавить другой аккаунт</button><button onclick="doLogout()">🚪 Выйти из аккаунта</button></div></div>
+  <div class="box"><b style="color:var(--bad)">Удаление аккаунта</b><div class="sub" style="margin:4px 0 8px">Танки и монеты пропадут навсегда.</div>
+    <div style="display:flex;gap:8px"><input id="delpass" type="password" placeholder="Твой пароль"><button class="d" onclick="doDelete()">Удалить</button></div></div>
+  </div>`;
+}
+function doLogout(){localStorage.removeItem('max_token');location.reload()}
+function addOther(){localStorage.removeItem('max_token');location.reload()}
+
+function imgToJpeg(blob){
+  return new Promise((ok,no)=>{
+    const url=URL.createObjectURL(blob),im=new Image();
+    im.onload=()=>{
+      const s=Math.min(im.width,im.height),c=document.createElement('canvas');
+      c.width=c.height=160;
+      const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,160,160);
+      x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,160,160);
+      URL.revokeObjectURL(url);
+      ok(c.toDataURL('image/jpeg',.85).split(',')[1]);
+    };
+    im.onerror=()=>{URL.revokeObjectURL(url);no(new Error('Не получилось открыть картинку'))};
+    im.src=url;
+  });
+}
+async function setAva(blob){
+  try{
+    const img=await imgToJpeg(blob);
+    const j=await api('avatar/set',{img});
+    me.av=j.av;toast('Аватарка обновлена');settingsRender();renderWho();
+  }catch(e){toast(e.message)}
+}
+function pickFile(f){if(f)setAva(f)}
+async function pasteAva(){
+  try{
+    const items=await navigator.clipboard.read();
+    for(const it of items){const t=it.types.find(x=>x.startsWith('image/'));if(t)return setAva(await it.getType(t))}
+    toast('В буфере нет картинки');
+  }catch(e){toast('Нет доступа к буферу. Нажми Ctrl+V прямо в этом окне')}
+}
+function onPaste(e){
+  const it=[...((e.clipboardData&&e.clipboardData.items)||[])].find(x=>x.type.startsWith('image/'));
+  if(it){e.preventDefault();setAva(it.getAsFile())}
+}
+async function rmAva(){
+  try{await api('avatar/set',{remove:1});me.av=0;settingsRender();renderWho()}catch(e){toast(e.message)}
+}
+async function doRename(){
+  const n=$('#newnick').value.trim();
+  if(!n)return;
+  if(!confirm('Сменить ник на «'+n+'» за 50 000 🪙?'))return;
+  try{
+    const j=await api('account/rename',{nick:n});
+    me.nick=j.nick;me.coins=j.coins;
+    const a=accs(),x=a.find(y=>y.token===token);if(x){x.nick=j.nick;saveAccs(a)}
+    toast('Ник изменён');
+    await refresh();renderMenu();settingsRender();
+  }catch(e){toast(e.message)}
+}
+async function doDelete(){
+  const pw=$('#delpass').value;
+  if(!pw){toast('Введи пароль');return}
+  if(!confirm('Удалить аккаунт навсегда? Танки и монеты пропадут.'))return;
+  try{
+    await api('account/delete',{pass:pw});
+    const a=accs().filter(x=>x.token!==token);saveAccs(a);
+    if(a.length)localStorage.setItem('max_token',a[0].token);else localStorage.removeItem('max_token');
+    location.reload();
+  }catch(e){toast(e.message)}
+}
+
+if(token)boot();else authList();
+</script>
+<script src="/tanks.js"></script>
+  <script src="/mx.js"></script>
+</body>
+</html>
