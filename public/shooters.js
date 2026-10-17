@@ -165,7 +165,7 @@
         });
       });
     };
-    load(); roomTimer = setInterval(load, 4000);
+    load(); roomTimer = setInterval(function () { if (!document.hidden) load(); }, 10000);
   }
 
   /* ---------- сессия ---------- */
@@ -211,7 +211,7 @@
       s.peer.on('open', function (id) {
         if (done || s.closed) return; done = true; clearTimeout(fallback); s.code = id;
         s.peer.on('connection', function (c) { hostConn(s, c); });
-        if (o.pub) { s.pub = true; publish(s); hbTimer = setInterval(function () { publish(s); }, 8000); }
+        if (o.pub) { s.pub = true; publish(s); hbTimer = setInterval(function () { publish(s); }, 15000); }
         afterPeer();
       });
       s.peer.on('error', function (e) { if (!done) { done = true; clearTimeout(fallback); MX.toast('Ошибка сети: ' + (e && e.type || e)); afterPeer(); } });

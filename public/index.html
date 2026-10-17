@@ -176,7 +176,8 @@ async function boot(){
   addAcc(me.nick,token);
   $('#auth').style.display='none';$('#app').style.display='grid';
   await render();
-  setInterval(poll,5000);
+  setInterval(()=>{if(!document.hidden)poll()},30000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});
   setInterval(flushTap,700);
 }
 async function refresh(){
